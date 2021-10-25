@@ -6,6 +6,8 @@ library(dplyr)
 library(xml2)
 
 news <- function(term) {
+
+##blablabla
   
   require(dplyr)
   require(xml2)
