@@ -7,6 +7,7 @@ install.packages("tibble")
 install.packages("ggplot2")
 install.packages("rjson")
 install.packages("httr")
+install.packages("dplyr")
 
 library(PxWebApiData)
 library(rjstat)
@@ -15,31 +16,33 @@ library(sf)
 library(tibble)
 library(ggplot2)
 library(rjson)
+library(dplyr)
 
 #### creating map file ####
 
 tmp1 <- tempfile()
 download.file("http://api.thenmap.net/v2/no-4/geo/2008-01-01",
-  destfile = tmp1
+              destfile = tmp1
 )
-county <- read_sf(tmp1)
+mapdata <- read_sf(tmp1)
 
 #### naming counties and correcting county numbers ####
 
-county$countynm <- c(
-  "oslo", "ostfold", "akershus", "hedmark", "oppland", "buskerud",
-  "vestfold", "telemark", "aust-agder", "vest-agder", "rogaland",
-  "hordaland", "sognogfjordane", "moreogromsdal",
-  "sor-trondelag", "nord-trondelag", "nordland", "troms",
-  "finnmark"
-)
-county$id <- c(
-  103, 101, 102, 104, 105, 106, 107, 108, 109, 110, 111, 112,
-  114, 115, 116, 117, 118, 119, 120
-)
+tidymap<-arrange(mapdata, id)
 
-View(county)
-plot(county)
+tidymap$countynm <- c(
+  "Østfold","Akershus","Oslo", "Hedmark", "Oppland", "Buskerud",
+  "Vestfold", "Telemark", "Aust-Agder", "Vest-Agder", "Rogaland",
+  "Hordaland", "Sogn og Fjordane", "Møre og Romsdal",
+  "Sør-Trøndelag", "Nord-Trøndelag", "Nordland", "Troms",
+  "Finnmark"
+)
+tidymap$id <-c(setdiff(101:120,113))
+
+#excluding 113 because it is old Bergen
+
+View(tidymap)
+plot(tidymap)
 
 #### importing election results ####
 
@@ -119,13 +122,19 @@ d.tmp <- POST(url , body = data, encode = "json", verbose())
 
 valgresultater <- fromJSONstat(content(d.tmp, "text"))
 
+valgresultater[73:76,1]<-"Finnmark"
+
 View(valgresultater)
 
 #### merging data frames ####
 
-#blablabla
+result09<-filter(valgresultater,fireårlig==2009)
+result13<-filter(valgresultater,fireårlig==2013)
+result17<-filter(valgresultater,fireårlig==2017)
+result21<-filter(valgresultater,fireårlig==2021)
 
-county$ps2009=""
-county$ps2013=""
-county$ps2017=""
-county$ps2021=""
+tidymap$ps2009 <- ifelse(result09$region==tidymap$countynm,result09$value,0)
+tidymap$ps2013 <- ifelse(result13$region==tidymap$countynm,result13$value,0)
+tidymap$ps2017 <- ifelse(result17$region==tidymap$countynm,result17$value,0)
+tidymap$ps2021 <- ifelse(result21$region==tidymap$countynm,result21$value,0)
+
