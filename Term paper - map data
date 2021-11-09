@@ -1,1 +1,32 @@
-blablabla
+## required packages ##
+
+install.packages("sf")
+library(sf)
+install.packages("tibble")
+library(tibble)
+install.packages("ggplot2")
+library(ggplot2)
+
+## creating map file ##
+
+tmp1 <- tempfile()
+download.file("http://api.thenmap.net/v2/no-4/geo/2008-01-01",
+  destfile = tmp1
+)
+county <- read_sf(tmp1)
+
+## naming counties and correcting county numbers
+county$countynm <- c(
+  "oslo", "ostfold", "akershus", "hedmark", "oppland", "buskerud",
+  "vestfold", "telemark", "aust-agder", "vest-agder", "rogaland",
+  "hordaland", "sognogfjordane", "moreogromsdal",
+  "sor-trondelag", "nord-trondelag", "nordland", "troms",
+  "finnmark"
+)
+
+county$id <- c(
+  103, 101, 102, 104, 105, 106, 107, 108, 109, 110, 111, 112,
+  113, 114, 115, 116, 117, 118, 119
+)
+
+plot(county)
