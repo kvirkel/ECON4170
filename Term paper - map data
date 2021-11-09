@@ -1,4 +1,4 @@
-## required packages
+#### required packages ####
 
 install.packages("PxWebApiData")
 install.packages("rjstat")
@@ -16,7 +16,7 @@ library(tibble)
 library(ggplot2)
 library(rjson)
 
-## creating map file
+#### creating map file ####
 
 tmp1 <- tempfile()
 download.file("http://api.thenmap.net/v2/no-4/geo/2008-01-01",
@@ -24,7 +24,8 @@ download.file("http://api.thenmap.net/v2/no-4/geo/2008-01-01",
 )
 county <- read_sf(tmp1)
 
-## naming counties and correcting county numbers
+#### naming counties and correcting county numbers ####
+
 county$countynm <- c(
   "oslo", "ostfold", "akershus", "hedmark", "oppland", "buskerud",
   "vestfold", "telemark", "aust-agder", "vest-agder", "rogaland",
@@ -37,12 +38,15 @@ county$id <- c(
   114, 115, 116, 117, 118, 119, 120
 )
 
+View(county)
 plot(county)
 
-## importing election results
+#### importing election results ####
+
 url <- "https://data.ssb.no/api/v0/no/table/08092/"
 
 # spørring fra SSB
+
 data <- '
 {
   "query": [
@@ -112,8 +116,16 @@ data <- '
 d.tmp <- POST(url , body = data, encode = "json", verbose())
 
 # Henter ut innholdet fra d.tmp som tekst deretter bearbeides av fromJSONstat
+
 valgresultater <- fromJSONstat(content(d.tmp, "text"))
 
-# Viser datasettet
-valgresultater
+View(valgresultater)
 
+#### merging data frames ####
+
+#blablabla
+
+county$ps2009=""
+county$ps2013=""
+county$ps2017=""
+county$ps2021=""
