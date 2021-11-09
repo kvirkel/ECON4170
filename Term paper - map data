@@ -30,3 +30,9 @@ county$id <- c(
 )
 
 plot(county)
+
+##Plotting the counties and filling them with county results from 2021-election
+ggplot(county) +
+  geom_sf(aes(fill = oppslutning2$oppslutning)) + labs(title= "FRPs oppslutning i Stortingsvalget 2021")+
+  scale_fill_viridis_c(option="inferno") +
+  theme_void()
