@@ -1,0 +1,154 @@
+## Seminar 3 - Week 37 ##
+
+#### packages ####
+
+library(tidyverse)
+
+##################
+## computing pi ##
+##################
+
+#### Task 1: For-loop  with Gregory-Leibniz####
+GregLeib <- 0
+
+# for every fourth number, add the previous result to 4 divided by the
+# current minus 4 divided by the next
+
+for (x in seq(1, 40, by = 4)) {
+  print(x)
+  GregLeib <- GregLeib + (4 / x) - (4 / (x + 2))
+}
+
+# removing variables that are used again
+rm(x)
+
+#### Task 2: For-loop with Nilakantha ####
+
+Nila <- 3
+
+for (x in seq(2, 40, by = 4)) {
+  print(x)
+  Nila <- Nila + (4 / (x * (x + 1) * (x + 2))) - (4 / ((x + 2) * (x + 3) * (x + 4)))
+}
+
+rm(x)
+
+
+## compare precision
+
+abs((pi - GregLeib)) - abs((pi - Nila))
+
+# positive value indicates Nila most precise
+
+
+#### task 3: 1000 loops instead ####
+
+GregLeib <- 0
+
+for (x in seq(1, 4000, by = 4)) {
+  print(x)
+  GregLeib <- GregLeib + (4 / x) - (4 / (x + 2))
+}
+
+rm(x)
+
+Nila <- 3
+
+for (x in seq(2, 4000, by = 4)) {
+  print(x)
+  Nila <- Nila + (4 / (x * (x + 1) * (x + 2))) - (4 / ((x + 2) * (x + 3) * (x + 4)))
+}
+
+rm(x)
+
+abs((pi - GregLeib)) - abs((pi - Nila))
+
+# Nila is still marginally better, but difference is less
+
+#### Task 4: Using loops to test different Ns ####
+iterations <- c(10, 100, 1000, 10000, 100000)
+
+GregLeib <- vector("double", 5)
+rownr <- 0
+
+for (reps in iterations) {
+  N <- reps # Assign the number of iterations to use to calculate pi
+  rownr <- rownr + 1 # A counter to assign which row to fill
+  for (x in seq(1, N, 4)) {
+    GregLeib[rownr] <- GregLeib[rownr] + (4 / x) - (4 / (x + 2))
+  }
+}
+print(GregLeib)
+
+rm(N, reps, rownr, x)
+
+Nila <- rep(3, 5)
+rownr <- 0
+for (reps in iterations) {
+  N <- reps
+  rownr <- rownr + 1
+  for (x in seq(2, N, 4)) {
+    Nila[rownr] <- Nila[rownr] + (4 / (x * (x + 1) * (x + 2))) - (4 / ((x + 2) * (x + 3) * (x + 4)))
+  }
+}
+print(Nila)
+
+rm(iterations, N, reps, rownr, x)
+
+#### Task 5: Creating tibble and graphics
+
+## tibble
+
+iterations <- c(10, 100, 1000, 10000, 100000)
+errorGL <- abs(pi - GregLeib)
+errorN <- abs(pi - Nila)
+
+df <- data_frame(iterations, GregLeib, Nila, errorGL, errorN) # Note that data_frame is different from data.frame
+
+
+df %>%
+  ggplot(aes(x = log10(iterations))) +
+  geom_line(aes(y = log10(errorGL)), color = "blue") +
+  geom_line(aes(y = log10(errorN)), color = "red")
+
+
+## Nila error declines more sharply, looks more efficient
+
+
+
+#################################
+## importing and cleaning data ##
+#################################
+
+#### Task 1: Importing and removing data####
+
+# set working directory
+
+setwd("C:/Users/lbskyum/OneDrive - Universitetet i Oslo/Documents/R/ECON4170 - Data Science")
+
+# get file
+
+election <- read_delim(
+  file = "2019-09-11_partifordeling_1_fy_2019.csv", # input data
+  delim = ";" # delimiter is semicolon
+)
+
+# filter out Oslo
+election <- filter(election, Fylkenavn != "Oslo") # remeber ""
+
+#### Task 2: Rename variable ####
+
+election <- election %>%
+  rename(votes = "Antall stemmer totalt")
+
+#### Task 3: create new tibble from selection ####
+votes <- election %>%
+  select(Fylkenavn, Fylkenummer, Partikode, votes)
+
+#### Task 4: filter out small parties ####
+votes <- votes %>%
+  filter(Partikode %in% c("A", "SV", "RØDT", "SP", "FRP", "KRF", "MDG", "H", "FNB", "V"))
+
+#### Task 5: Reshape data ####
+finalvotes <- votes %>%
+  pivot_wider(names_from = Partikode, values_from = votes)
