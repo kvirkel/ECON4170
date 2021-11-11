@@ -1,0 +1,224 @@
+## Seminar 2 - Week 36 ##
+
+#### Packages ####
+install.packages("tidyverse")
+library(tidyverse)
+
+#### Notes ####
+
+# Div: Deling på hele tall - %/%
+# Mod/Modulus: Rest - %%
+
+
+#####################
+## Dates of easter ##
+#####################
+
+#### Task 1: Script and function ####
+
+Y <- 2022
+
+a <- Y %% 19
+b <- Y %/% 100
+c <- Y %% 100
+d <- b %/% 4
+e <- b %% 4
+g <- (13 + 8 * b) %% 25
+h <- (15 + 19 * a + b - d - g) %% 30
+i <- c %/% 4
+k <- c %% 4
+l <- (32 + 2 * e + 2 * i - h - k) %% 7
+m <- (a + 11 * h + 191) %/% 433
+
+month <- (90 + h + 1 - 7 * m) %/% 25
+day <- (19 + h + 1 - 7 * m + 33 * month) %% 32
+
+result <- list("day" = day, "month" = month)
+
+print(result)
+
+## as a function
+
+easter <- function(Y) {
+  a <- Y %% 19
+  b <- Y %/% 100
+  c <- Y %% 100
+  d <- b %/% 4
+  e <- b %% 4
+  g <- (13 + 8 * b) %% 25
+  h <- (15 + 19 * a + b - d - g) %% 30
+  i <- c %/% 4
+  k <- c %% 4
+  l <- (32 + 2 * e + 2 * i - h - k) %% 7
+  m <- (a + 11 * h + 191) %/% 433
+
+  month <- (90 + h + 1 - 7 * m) %/% 25
+  day <- (19 + h + 1 - 7 * m + 33 * month) %% 32
+
+  result <- list("day" = day, "month" = month)
+
+  return(result)
+}
+easter(2022)
+easter(2021)
+
+#### Task 2: Easter as numbers of days after 21/03 ####
+
+easter2 <- function(Y) {
+  a <- Y %% 19
+  b <- Y %/% 100
+  c <- Y %% 100
+  d <- b %/% 4
+  e <- b %% 4
+  g <- (13 + 8 * b) %% 25
+  h <- (15 + 19 * a + b - d - g) %% 30
+  i <- c %/% 4
+  k <- c %% 4
+  l <- (32 + 2 * e + 2 * i - h - k) %% 7
+  m <- (a + 11 * h + 191) %/% 433
+
+  month <- (90 + h + 1 - 7 * m) %/% 25
+  day <- (19 + h + 1 - 7 * m + 33 * month) %% 32
+
+  ifelse(month == 4, return(day + 10), return(day - 21))
+  # day+10 if we are in april, day-21 if we are in march
+  # alternative code in solution: return(day+10*(month==4)-21*(month==3))
+}
+easter2(2021)
+
+#### Task 3: All easters between 2000 and 2100 ####
+
+## vectorization
+easter(2000:2100)
+easterdates <- table(easter(2000:2100))
+plot(easterdate)
+
+## actual loop
+
+for (y in 2000:2100) {
+  print(easter(y))
+}
+
+# graphically: must show april as numbers from 31 and out
+easter3 <- function(Y) {
+  a <- Y %% 19
+  b <- Y %/% 100
+  c <- Y %% 100
+  d <- b %/% 4
+  e <- b %% 4
+  g <- (13 + 8 * b) %% 25
+  h <- (15 + 19 * a + b - d - g) %% 30
+  i <- c %/% 4
+  k <- c %% 4
+  l <- (32 + 2 * e + 2 * i - h - k) %% 7
+  m <- (a + 11 * h + 191) %/% 433
+
+  month <- (90 + h + 1 - 7 * m) %/% 25
+  day <- (19 + h + 1 - 7 * m + 33 * month) %% 32
+
+  return(day + 31 * (month == 4))
+}
+
+easterdates <- NULL
+
+for (y in 2000:2100) {
+  easterdates <- c(easterdates, easter3(y))
+}
+
+ggplot(tibble(easterdates), aes(easterdates)) +
+  geom_bar()
+
+
+### trying something simpler but uglier
+
+testeaster <- table(easter3(2000:2100))
+plot(testeaster)
+help(plot)
+
+#### Task 4: Same but between 2000-5000 ####
+easterdateslong <- NULL
+
+for (y in 2000:5000) {
+  easterdateslong <- c(easterdateslong, easter3(y))
+}
+
+ggplot(tibble(easterdateslong), aes(easterdateslong)) +
+  geom_bar()
+
+
+#######################
+## Fibonacci numbers ##
+#######################
+
+#### Task 1: Compute first 100 numbers ####
+
+## Create vector
+N <- 100
+F <- vector("double", N) ## "double" indicates that vector type is a number
+F[1] <- 1
+F[2] <- 1
+for (i in 3:N) {
+  F[i] <- F[i - 2] + F[i - 1]
+}
+head(F) ## displaying the beginning of a vector to check if correct
+
+#### Task 2: Finding numbers recursively ####
+
+fibo <- function(n) {
+  if (n < 3) {
+    return(1)
+  } else {
+    return(fibo(n - 2) + fibo(n - 1))
+  }
+}
+
+#### Task 3: Checking time usage for each method ####
+
+# method 1
+start <- Sys.time()
+F[30]
+Stop <- Sys.time()
+stop - start
+
+# method 2
+start <- Sys.time()
+fibo(30)
+stop <- Sys.time()
+stop - start
+
+## recursive is slower because it calls itself an increasing amount of times 
+## for each number
+
+
+##########################
+## Lotka-Volterra model ##
+##########################
+
+## predator vs prey model
+# R = Rabbits (prey)
+# F = Foxes (predator)
+# t = year
+
+#### Task 1: Vectors and initial numbers ####
+
+T <- 200
+R <- vector("double",T)
+F <- vector ("double",T)
+
+a <- 0.07
+b <- 0.002
+c <- 0.2
+d <- 0.0025
+R[1] = 80
+F[1]=20
+
+#### Task 2: Finishing loop 2-200 ####
+for (t in 2:T) {
+  R[t] <- (1+a)*R[t-1]-b*R[t-1]*F[t-1]
+  F[t] <- (1-c)*F[t-1]+d*R[t-1]*F[t-1]
+}
+
+#### Task 3: Plot ####
+
+plot (1:T,R,type='l',ylim=c(0,500),col='green')
+lines(1:T,F,col="red")
