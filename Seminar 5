@@ -255,8 +255,11 @@ gini.simul <- function() {
 # bootstrapping = repeatedly drawing a new sample of the same size as original sample, but with replacement
 
 bootstraps <- replicate(200, gini.simul()) # drawing sample 200 times
-sd(bootstraps) # calculating standard deviation
-tibble(bs = bootstraps) %>% # creating a table(tibble) for estimated ginis
+
+stddev<-sd(bootstraps) %>% # calculating standard deviation of bootstraps
+  print()
+
+tibble(bs = bootstraps) %>% # creating a table(tibble) for estimated ginis and plotting it in histogram
   ggplot(aes(x = bs)) + # y implicitly=density
   geom_histogram(aes(y = ..density..), bins = 50, colour = "black", fill = "white") + # histogram. bins are number of lines
   geom_density(alpha = .2, fill = "#FF6666") + # density function
