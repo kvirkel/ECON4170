@@ -1,0 +1,38 @@
+## Seminar 4 - Week 39 ##
+
+#### packages ####
+
+library(tidyverse)
+
+
+##########################
+## GDP across the world ##
+##########################
+
+#### Task 1: Importing data ####
+
+# by script
+
+setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R")
+
+pwt <- read_csv(
+  file = "pwt.csv", # input data
+)
+
+# by import function in RStudio
+# file -> import dataset -> from text
+
+#### Task 2: Filtering ####
+
+gdp_nor <- filter(pwt,country=="Norway")
+
+gdp_nor <- gdp_nor %>% 
+  select(year,gdp)
+
+#### Task 3: Annual growth rates for China ####
+
+pwt.china <- pwt %>% 
+  select(country,year,gdp) %>% 
+  mutate(gdprate=(gdp-lag(gdp))/lag(gdp)) %>% 
+  filter(country=="China" & year >= 1970 & year <=2000) %>% 
+  select(year,gdprate)
