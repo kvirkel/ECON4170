@@ -1,0 +1,263 @@
+## Seminar 5 - Week 41 ##
+
+setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R")
+
+#### Packages ####
+library(tidyverse)
+library(ggplot2)
+library(magrittr)
+library(readxl)
+library(countrycode)
+library(ineq)
+library(dplyr)
+
+###################
+## CO2 Emissions ##
+###################
+
+#### Task 1: Importing, plotting ####
+
+co2 <- read_excel("co2.xlsx")
+
+co2 %>%
+  filter(Code == "USA") %>%
+  ggplot((aes(x = Year, y = co2))) +
+  geom_line()
+
+## Adding China
+co2 %>%
+  filter(Code == "USA" | Code == "CHN") %>% # Specify USA and China
+  ggplot(aes(x = Year, y = co2, color = Entity)) +
+  geom_line() + # Change color argument
+  labs(color = "Country") + # Change legend title
+  scale_y_continuous(labels = scales::comma) # change y scale
+
+#### Task 2: Plotting change in emissions ####
+
+co2 %>%
+  filter(Code == "USA" | Code == "CHN") %>%
+  group_by(Code) %>% # group_by to avoid mashing countries together when using lags
+  mutate(co2change = co2 - lag(co2)) %>% # create variable for change in co2
+  ggplot(aes(x = Year, y = co2change, color = Entity)) +
+  geom_line() +
+  labs(color = "Country") +
+  scale_y_continuous(labels = scales::comma)
+
+#### Task 3: Total CO2 emissions ####
+
+global <- co2 %>%
+  group_by(Year) %>%
+  select(Year, co2) %>%
+  summarize(co2.global = sum(co2))
+
+
+global %>%
+  ggplot(aes(x = Year, y = co2.global)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::comma)
+
+
+#### Task 4: US data ####
+us <- co2 %>%
+  filter(Code == "USA") %>%
+  rename(co2.us = co2) # easier with china later
+
+usvsworld <- left_join(global, us, by = "Year") %>%
+  mutate(share.us = co2.us / co2.global) %>%
+  select(Year, co2.global, co2.us, share.us)
+
+
+# with china
+china <- co2 %>%
+  filter(Code == "CHN") %>%
+  rename(co2.chn = co2) %>%
+  select(Year, co2.chn)
+
+usvschinavsworld <- left_join(usvsworld, china, by = "Year") %>%
+  mutate(share.chn = co2.chn / co2.global)
+
+# plot
+
+usvschinavsworld %>%
+  ggplot(aes(x = Year, y = share.us, color = "USA")) +
+  geom_line() +
+  geom_line(aes(x = Year, y = share.chn, color = "CHN"))
+
+#### Task 5: Country Codes ####
+
+continental <- co2 %>%
+  mutate(continent = countrycode(Code, "iso3c", "continent")) %>%
+  group_by(continent, Year) %>%
+  summarize(co2.continent = sum(co2))
+
+# plotting
+
+continental %>%
+  ggplot() +
+  geom_line(aes(x = Year, y = co2.continent, color = continent)) +
+  scale_y_continuous(labels = scales::comma)
+
+#### Task 6: Stacked charts ####
+continental %>%
+  ggplot() +
+  geom_area(aes(x = Year, y = co2.continent, fill = continent)) + # fill instead of color
+  scale_y_continuous(labels = scales::comma)
+
+#### task 7: Trying to make it look good ####
+
+## changing order of continents
+order.old <- continental %>%
+  select(continent) %>%
+  pull() # recall pull command extracts from tibble to vector
+
+levels.new <- c("Oceania", "Asia", "Americas", "Africa", "Europe") # preferred order
+order.new <- fct_relevel(factor(order.old, levels = levels.new))
+
+## do same for 2012 for names
+order.old.2012 <- continental %>%
+  filter(Year == 2012) %>%
+  select(continent) %>%
+  pull()
+order.new.2012 <- fct_relevel(factor(order.old.2012, levels = levels.new))
+
+## colors of stacks. from red to blue
+
+color.choice <- c(
+  rgb(1, 0, 0), rgb(1, 0.3, 0.3), rgb(1, 0.5, 0.5),
+  rgb(0.5, 0.7, 1), rgb(0, 0.4, 0.8)
+)
+
+## only from year 1850
+continental <- continental %>%
+  filter(Year >= 1850)
+## final code
+continental %>%
+  ggplot() +
+  geom_area(aes(x = Year, y = co2.continent / 10^9, fill = continent)) +
+  geom_segment(data = subset(global, Year %in% c(1850, 1875, 1900, 1925, 1950, 1975, 2000)), aes(x = Year, y = 0, xend = Year, yend = co2.global / 10^9), colour = "white") +
+  labs(title = "CO2 emissions, gigatonnes", subtitle = "By continent") +
+  theme(axis.title = element_blank(), panel.background = element_blank(), panel.grid.major.y = element_line(colour = "grey"), legend.position = "none") +
+  scale_x_continuous(breaks = c(1850, 1875, 1900, 1925, 1950, 1975, 2000, 2017)) +
+  scale_fill_manual(values = color.choice) +
+  geom_text(data = subset(continental, Year == 2012), aes(x = Year, y = co2.continent / 10^9, group = order.new.2012, label = continent), position = position_stack(vjust = 0.5), size = 2, color = "white")
+
+rm(list = ls())
+######################
+## GINI Coefficient ##
+######################
+
+incomes <- read_csv("incomes.csv")
+
+#### Task 1: Computing Gini ####
+
+Ginitest <- Gini(incomes$income) # this is the solution we want to end up at
+
+## What do we need?
+# a) absolute value of all differences in income (numerator)
+# b) 2*number of people*average income (denominator)
+
+# a)
+
+s <- incomes %>%
+  rename(income2 = income) %>%
+  full_join(incomes, by = character()) %>% # full_join matches all combinations of income and income2
+  mutate(diff = abs(income - income2)) %>% # creating column for absolute value of differences
+  summarise(s = sum(diff)) %>% # summarising differences
+  pull() # printing as value
+
+# b)
+
+n <- nrow(incomes)
+m <- mean(incomes$income)
+
+Gini1 <- s / (2 * n^2 * m)
+
+## is correct!!
+
+#### Task 2: Different formula ####
+# n and m is the same
+
+# a) again:
+ss <- incomes %>%
+  mutate(i = rank(income)) %>%
+  mutate(ix = i * income) %>%
+  summarise(s = sum(ix)) %>%
+  pull()
+
+Gini2 <- 2 * ss / (n^2 * m) - (n + 1) / n
+
+## correct again!
+
+#### Task 3: Comparing time usage
+
+# make both methods do everything to be "fair
+
+rm(s, ss, n, m, Gini1, Gini2)
+
+# m1:
+start_time <- Sys.time()
+s <- incomes %>%
+  rename(income2 = income) %>%
+  full_join(incomes, by = character()) %>%
+  mutate(diff = abs(income - income2)) %>%
+  summarise(s = sum(diff)) %>%
+  pull()
+
+n <- nrow(incomes)
+m <- mean(incomes$income)
+
+Gini1 <- s / (2 * n^2 * m)
+end_time <- Sys.time()
+end_time - start_time
+
+rm(m, n)
+
+# m2:
+start_time <- Sys.time()
+ss <- incomes %>%
+  mutate(i = rank(income)) %>%
+  mutate(ix = i * income) %>%
+  summarise(s = sum(ix)) %>%
+  pull()
+
+n <- nrow(incomes)
+m <- mean(incomes$income)
+
+Gini2 <- 2 * ss / (n^2 * m) - (n + 1) / n
+
+end_time <- Sys.time()
+end_time - start_time
+
+## method 1 is slightly slower. Makes sense because we create such a large data set
+
+#### Task 4: Bootstrapping ####
+
+## a) create function for calculating Gini (method2)
+gini2.1 <- function(inc) {
+  ss <- inc %>% # same as method 2
+    mutate(i = rank(income)) %>%
+    mutate(ix = i * income) %>%
+    summarise(s = sum(ix)) %>%
+    pull()
+  m <- mean(incomes$income)
+  n <- nrow(incomes)
+  return(2 * ss / (n^2 * m) - (n + 1) / n)
+}
+
+## b) drawing samples with slice_sample
+
+gini.simul <- function() {
+  inc.redrawn <- slice_sample(incomes, n = n, replace = TRUE) # slice_sample randomly selects rows. with replacement = same income can occur several times
+  return(gini2.1(inc.redrawn))
+}
+## c) calculating results
+
+# bootstrapping = repeatedly drawing a new sample of the same size as original sample, but with replacement
+
+bootstraps <- replicate(200, gini.simul()) # drawing sample 200 times
+sd(bootstraps) # calculating standard deviation
+tibble(bs = bootstraps) %>% # creating a table(tibble) for estimated ginis
+  ggplot(aes(x = bs)) + # y implicitly=density
+  geom_histogram(aes(y = ..density..), bins = 50, colour = "black", fill = "white") + # histogram. bins are number of lines
+  geom_density(alpha = .2, fill = "#FF6666") + # density function
+  geom_vline(xintercept = gini2.1(incomes), color = "red", linetype = "dashed", size = 1) # xintercept is dotted line=original Gini
