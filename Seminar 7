@@ -1,0 +1,181 @@
+## Seminar 7 - Week 45 ##
+
+setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R")
+
+#### packages ####
+library(tidyverse)
+library(magrittr)
+library(nleqslv)
+library(quantmod)
+library(lubridate)
+library(xts)
+library(ggplot2)
+
+########################
+## Market equilibrium ##
+########################
+
+#### Task 1: Create algorithm ####
+
+# D = 5 - p
+# S = a ln(p)
+# in equilibrium, D = S (call it q for quantity), so 5-p-q=0 and a*ln(p)-q=0
+
+a <- 1 # given in problem text
+
+f <- function(x) {
+  return(c(5-x[1]-x[2],
+           a*log(x[1])-x[2])) # x[1]=p, x[2]=q
+}
+initial <- c(.1,0) # set initial numbers to get the calculation going. cannot set (0,0) because of ln(p)
+
+
+# solving when a=1
+
+result1.1 <- nleqslv(initial, f)
+result1.1 <- result1.1$x
+
+# p = 3.69, q = 1.31
+
+
+#### Task 2: When a is between 0.1 and 5 ####
+
+result1.2<- tibble(p=double(),q=double()) #prepare result matrix
+rownr <- 0 # set initial row
+
+for (a in seq(0.1, 5, by=0.1)){
+  values <- nleqslv(initial, f) #solution to equation system for each a
+  rownr <- rownr+1 #increase rownr with 1 each time
+  result1.2[rownr,] <- rbind(unlist(values["x"])) # saving results
+}
+
+#plotting result
+
+result1.2 %>% 
+  ggplot(aes(x=seq(0.1, 5, by=0.1)))+
+  geom_line(aes(x=seq(0.1, 5, by=0.1), y=q,color="q")) + #remember to put color inside aes() to create legend
+  geom_line(aes(x=seq(0.1, 5, by=0.1), y=p,color="p"))+
+  ggtitle("equilibrium values of p and q as a changes")+ # plot title
+  xlab("value of a") + ylab("value of p and q") #axis titles
+
+
+##################
+## Cobweb model ##
+##################
+rm(list=ls())
+
+#### Task 1: Create functions ####
+S <- function(p) return(2*sqrt(p)) #supply
+D <- function(p) return(10-p)      #demand
+P <- function(q) return(10-q)      #inverse demand
+
+#### Task 2: Compute 20 future periods when p0=2 ####
+
+prices2.2 <- vector(mode='numeric',length = 21) #create prices vector
+quantities2.2 <- vector(mode = 'numeric', length = 21) #create quantities vector
+prices2.2[1]=2 #set p0
+
+for (t in 1:20) { 
+  quantities2.2[t+1] <- S(prices2.2[t])  #quantity tomorrow is the same as supply today
+  prices2.2[t+1] <- P(quantities2.2[t+1]) #price tomorrow is the same as the price based on the produced quantities tomorrow
+}
+
+result2.2 <- tibble(prices=prices2.2,quantities=quantities2.2) %>% 
+  mutate(p.change=abs(prices-lag(prices)), #column for price change
+         q.change=abs(quantities-lag(quantities))) #column for quantity change (not necessary but I wanted it idk)
+
+view(result2.2) # yes, looks like they are converging
+
+#### Task 3: Fluctuations in demand ####
+# Demand is now D = 10 - p + e where e is a random variable N(0,1)
+# to be able to replicate, we must set seed
+set.seed(1349)
+
+prices2.3 <- vector(mode='numeric',length = 21) #new price vector
+quantities2.3 <- vector(mode = 'numeric', length = 21) #new quantity vector
+noise <- rnorm(20) #We specify n= number of obs. Default mean and sd is 0 and 1.
+prices2.3[1]=2 # Period 0 price 
+
+for (t in 1:20) { 
+  quantities2.3[t+1] <- S(prices2.3[t]) 
+  prices2.3[t+1] <- P(quantities2.3[t+1])+noise[t] #now we have added noise in demand vector
+}
+
+result2.3 <- tibble(prices=prices2.3,quantities=quantities2.3) %>% #same as 2.2
+  mutate(p.change=abs(prices-lag(prices)), #column for price change
+         q.change=abs(quantities-lag(quantities)))
+
+View(result2.3) #not converging now. Makes sense because of different noise every period
+
+
+#### Task 4: Solving for price level p when S = D ####
+f <- function(p) return(S(p)-D(p)) # because S-D=0
+
+# will use bisection method. choose one p so that f>0 and one f<0.
+# I chose p=0 and p=10. Then f=-10<0 and f=2sqrt(10)>0 (assuming no negative supply)
+# because of intermediate value theorem, there must then be a value for p between 0 and 10 where S-D=0
+# We will find the midpoint, then repeat process
+
+# initialize loop
+a<-0 # value where f < 0
+b<-10 # value where f > 0
+eps<-1e-6 # Error tolerance 
+N<-1000 # total allowed iterations 
+iter<-0 # placeholder
+
+while ((b-a)/2>eps & iter<N) { #will repeat process until either condition is broken
+  m<-(a+b)/2 
+  if (f(a)*f(m)<0) { 
+    b<-m 
+  } else { 
+    a<-m 
+  } 
+  iter<-iter+1 
+}
+
+# equilibrium price p is between values of a and b. Note that iter=23, so only used 23 iterations to error tolerance
+
+myestimate<- (a+b)/2 #storing my estimate to compare later
+
+## comparing to model in Task 2.2
+
+# to compare, we first make a more accurate bisection estimate
+
+# identical as above, except eps (and potentially N, but not necessary here)
+a<-0 # value where f < 0
+b<-10 # value where f > 0
+eps<-1e-9 # Error tolerance - lower for more accurate estimations. Can use lower as well, 1e-9 is just a random choice for me
+N<-1000 # total allowed iterations -  not necessary to increase this since we only used 23 last time, but we can if we want
+iter<-0 # placeholder
+
+while ((b-a)/2>eps & iter<N) {
+  m<-(a+b)/2 
+  if (f(a)*f(m)<0) { 
+    b<-m 
+  } else { 
+    a<-m 
+  } 
+  iter<-iter+1 
+}
+trueestimate <- (a+b)/2
+
+abs(prices2.2[21]-trueestimate)-abs(myestimate-trueestimate)
+# positive number indicates that my estimate was better, as the error is smaller there than in 2.2
+
+###########################
+## Predicting BTC prices ##
+###########################
+
+rm(list=ls())
+
+btcprice <- getSymbols('BTC-USD',source = 'yahoo',auto.assign = F)
+
+#xts = extensible time series
+
+# trying autoplot (in ggplot2)
+c <- btcprice["2020-01-01/2021-11-01"] ## dataset with observations from jan1 2020 to nov1 2021 as given in problem text
+autoplot(c$"BTC-USD.Close") #need "" because of - in name (cannot use rename() on xts??)
+
+
+
+
