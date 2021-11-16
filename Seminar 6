@@ -1,0 +1,152 @@
+## Seminar 6 - Week 43   ##
+
+setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R")
+
+#### packages ####
+library(tidyverse)
+library(magrittr)
+library(ggplot2)
+library(caret)
+library(ranger)
+library(gbm)
+
+############################
+## Predicting performance ##
+############################
+
+#### Task 1: selecting, renaming, converting ####
+
+student_mat <- read_delim("student-mat.csv", ";")
+
+student_mat <- student_mat %>%
+  select(sex, age, Mjob, Fjob, traveltime, studytime, failures, absences, G3) %>%
+  rename(grades = "G3") %>%
+  mutate_if(is.character, as.factor)
+
+#### Task 2: Creating Dummy variables ####
+
+?dummyVars
+dummies <- dummyVars(grades ~ ., data = student_mat) # grades~. specifies that grades is the dependent variable, all else should be dummyfied
+gradesdta <- data.frame(predict(dummies, newdata = student_mat))
+
+gradesdta <- gradesdta %>%
+  mutate(grades = student_mat$grades) # adding the grades back to the df
+
+#### Task 3: Test variation and collinearity
+
+# i) variation
+nzvresults <- nearZeroVar(gradesdta, saveMetrics = TRUE)
+
+nzvresults %>%
+  filter(nzv == TRUE) %>% # only show those who actually have var=0 (thus failed the test and should be removed)
+  View() # only variable that failed is Fjob.health. Remove it.
+
+gradesdta <- gradesdta %>%
+  select(-Fjob.health) # removing Fjob.health
+
+# ii) correlation matrix
+correlation <- cor(gradesdta, gradesdta)
+View(correlation) # see that sex.F and sex.M are perfectly correlated (duh). Remove one of them
+
+gradesdta <- gradesdta %>%
+  select(-sex.M, -Mjob.teacher) # also remove one Mjob to avoid perfect multicol.
+
+#### Task 4: Machine Learning ####
+rm(dummies, correlation, nzvresults, student_mat)
+
+set.seed(1337)
+
+index <- createDataPartition(gradesdta$grades, times = 1, p = 0.8, list = FALSE) # p is % that is used in training
+gradesdta.train <- gradesdta[index, ] # dataset for training
+gradesdta.test <- gradesdta[-index, ] # dataset for testing
+
+# we partition data to create balanced splits of the data. Yes, we should do it now.
+
+#### Task 5: Cross validation ####
+# Cross validation is also called out-of-sample testing.
+# Used to test model outside of the known data to test validity of model "in real world"
+# See how a predictive model performs in practice
+
+ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 10) # constructing train-control object
+# splitting data set in 10 and then in 10 again, taking 9/10 in each group as training and the last as test
+
+#### Task 6: Actual training! ####
+
+# a) OLS
+
+ols.mod <- train(grades ~ .,
+  data = gradesdta.train,
+  method = "lm",
+  trControl = ctrl
+)
+# trControl indicates the list of values that define how the function acts. in our example, we created ctrl in last task
+ols.mod
+# See that not much happened here (logical because OLS is quite predictable)
+# Only states that we kept the intercept as the model estimated when testing on the last values
+
+# b) Random forest = less systematic
+randomforest.mod <- train(grades ~ .,
+  data = gradesdta.train,
+  method = "ranger", # code for random forest method given in problem text
+  importance = "permutation", # Argument used to obtain varImp in next problem (given in problem text)
+  trControl = ctrl
+)
+
+randomforest.mod
+# min.node.size is the tuning parameter. This parameter defines the depth of the tree.
+
+# c) Boosting tree:
+# Each tree is fit on a modified version of the original dataset.
+# 3 tuning parameters: number of trees, shrinkage and interaction depth(# of splits)
+boostingtree.mod <- train(grades ~ .,
+  data = gradesdta.train,
+  method = "gbm",
+  trControl = ctrl
+)
+
+boostingtree.mod
+
+#### Task 7: study variables ####
+varImp(ols.mod)
+varImp(randomforest.mod)
+varImp(boostingtree.mod)
+
+# all models agree that failures is the most important variable
+
+# OLS top: failures, sex.F, Mjob.health
+# Rforest top: failures, absences, sex.f
+# Btree top: absences, failures, age
+
+#### Task 8: Prediction ####
+
+ols.pred <- predict(ols.mod, gradesdta.test)
+randomforest.pred <- predict(randomforest.mod, gradesdta.test)
+boostingtree.pred <- predict(boostingtree.mod, gradesdta.test)
+
+results <- tibble(ols.pred, randomforest.pred, boostingtree.pred, 
+                  grades = gradesdta.test$grades)
+
+results <- results %>%
+  mutate(ols.error = ols.pred - grades) %>%
+  mutate(randomforest.error = randomforest.pred - grades) %>%
+  mutate(boostingtree.error = boostingtree.pred - grades)
+
+# mean squared error
+
+mse.results <- results %>%
+  mutate(
+    mse_ols = mean(ols.error^2), mse_random = mean(randomforest.error^2),
+    mse_boost = mean(boostingtree.error^2)
+  )
+mse.results # see that boosting tree has lowest MSE, apparently best fit so far
+
+# density plots
+
+results %>%
+  ggplot() +
+  geom_density(aes(x = ols.error, color = "ols error")) +
+  geom_density(aes(x = randomforest.error, color = "random forest error")) +
+  geom_density(aes(x = boostingtree.error, color = "boosting tree error"))
+
+# see that OLS and boosting tree ar slightly negatively biased
+# random forest has peak closest to 0, but has a small increase in large pos. errors
