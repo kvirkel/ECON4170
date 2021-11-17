@@ -1,0 +1,57 @@
+rm(list=ls())
+
+install.packages("pdftools")
+install.packages("tm")
+install.packages("SnowballC")
+install.packages("NLP")
+install.packages("reader")
+
+library(pdftools)
+library(tm)
+library(SnowballC)
+library(reader)
+library(NLP)
+
+## Importing the PDF documents into R ##
+
+# Setting working directory to the folder containing
+# the FRP party programs.
+setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R/Partiprogrammer")
+
+# Import PDF file names
+# Creating vector of the PDF files in the "TextMining" folder,
+# done by only including files ending with ".pdf".
+FRP_PDFs <- list.files(pattern = "pdf$")
+
+# Thus, we have the "FRP_PDFs"-vector containing all four PDFs
+
+# Now, extracting the actual text from the documents, by using
+# the pdftools package function for extracting text: pdf_text.
+# By using the lapply function, the pdf_text function can be applied
+# to every element in the "FRP_PDFs"-vector, to create a list object
+# called "FRP_Party_Programs".
+
+FRP_Party_Programs <-  lapply(FRP_PDFs, pdf_text)
+
+# FRP_Party_Programs should be a list object containing four elements,
+# one for each party program. That is confirmed by checking the length
+# of the object:
+
+length(FRP_Party_Programs)
+
+# Each PDF file is a vector in the FRP_Party_Programs vector. The length
+# of each vector is the number of pages in each vector.
+# The party programs for 2009-13; 2013-17; 2017-21; 2021-25 have 
+# 92, 86, 90 and 132 pages, respectively.
+# To confirm that we have imported all the pages of the PDFs, we apply 
+# the length function to each element:
+
+lapply(FRP_Party_Programs, length) 
+
+# Confirming the length of each vector, and thus all of the PDFs have 
+# successfully been loaded into R.
+
+FRP_Party_Programs
+
+
+## Cleaning the Data and Text mining ##
