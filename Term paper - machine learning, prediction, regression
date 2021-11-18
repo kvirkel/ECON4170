@@ -20,25 +20,33 @@ library(sf)
 library(tibble)
 library(rjson)
 library(dplyr)
+library(dynlm)
+library(lmtest)
+library(xts)
+library(stargazer)
 
 #### importing and editing datasets for keyword search ####
 
-innvandr <- read_excel("innvandr.xlsx") %>%
+innvandring <- read_excel("innvandring.xlsx") %>%
   rename(innvandring = "1. januar 2008 - 30. september 2021") # renaming for clarity
 
 eldre <- read_excel("eldre.xlsx") %>%
   rename(eldre = "1. januar 2008 - 30. september 2021")
 
-skattavgift <- read_excel("skattavgiftbompenge.xlsx") %>%
+skattavgift <- read_excel("skattavgift.xlsx") %>%
   rename(skattavgift = "1. januar 2008 - 30. september 2021")
+
+samferdsel <- read_excel("samferdsel.xlsx") %>%
+  rename(samferdsel = "1. januar 2008 - 30. september 2021")
 
 ## merging
 
-artikler <- tibble(month = innvandr$Category,  # "Category" indicates month in original data frame
-                   innvandring = innvandr$innvandring,
+artikler <- tibble(month = innvandring$Category,  # "Category" indicates month in original data frame
+                   innvandring = innvandring$innvandring,
                    eldre = eldre$eldre,
-                   skattavgift = skattavgift$skattavgift) %>%
-  mutate(tot.art = innvandring + eldre + skattavgift) %>% # column for total number of articles
+                   skattavgift = skattavgift$skattavgift,
+                   samferdsel=samferdsel$samferdsel) %>%
+  mutate(tot.art = innvandring + eldre + skattavgift+samferdsel) %>% # column for total number of articles
   mutate(month = format(as.Date(seq(as.Date("01-01-2008", "%d-%m-%Y"), 
                                     as.Date("30-09-2021", "%d-%m-%Y"),
                                     by = "month")), "%Y(%m)")) 
@@ -276,14 +284,50 @@ poll <- read.csv2("polls.csv") %>%
 fullframe <- inner_join(art.unemp, poll, by = c("month" = "month")) %>% # merging data frames where "month" is identical
   mutate(pcts.frp = as.numeric(sub(",", ".", pcts.frp))) # changing from comma to period to identify numeric variables
 
-rm(art.unemp,artikler,d.tmp,eldre,innvandr,poll,skattavgift,unemployment,data,url)
+rm(art.unemp,artikler,d.tmp,eldre,samferdsel,innvandring,poll,skattavgift,unemployment,data,url)
+
+#### Ordinary regression ####
+# we use simple linear regression to compare different models of what could affect FrPs results.
+# it is possible that the number of articles does not affect the polling results directly, 
+# so we add lags to see if they explain more.
+
+fullframe.ts<-ts(fullframe,start=c(2008,1),end=c(2021,8),frequency=12) #making it readable for ts models
+
+mod1<-dynlm(pcts.frp~ue.rate, data=fullframe.ts)
+summary(mod1)
+
+mod2<-dynlm(pcts.frp~ue.rate + eldre+innvandring+skattavgift+samferdsel, data=fullframe.ts)
+summary(mod2)
+
+mod3<-dynlm(pcts.frp~ue.rate + L(eldre,0:1)+L(innvandring,0:1)+L(skattavgift,0:1)+L(samferdsel,0:1), data=fullframe.ts)
+summary(mod3)
+
+mod4<-dynlm(pcts.frp~L(ue.rate,0:1) + L(eldre,0:1)+L(innvandring,0:1)+L(skattavgift,0:1), data=fullframe.ts)
+summary(mod4) # see that R^2 decreases even though number of regressors go up and new regressors are insignificant, so we "go back" to mod 3
+
+# does total number of articles matter?
+mod5<-dynlm(pcts.frp~ue.rate+L(tot.art,0:1),data=fullframe.ts)
+summary(mod5)
+#no. they are v bad
+
+#exporting regressions to table with stargazer
+
+stargazer(mod1,mod2,mod3,mod4,mod5,
+          type = "html",
+          out = "regtable-frp.doc"
+)
+
+#no. best model is apparently mod3, so that's what we will deal with further
+
+rm(mod1,mod2,mod4,mod5)
 
 #### machine learning ####
 
 set.seed(4170) #to be able to replicate the results
 
 learning.frame <- fullframe %>% 
-  select(-month,-tot.art,-ue.change) %>% 
+  select(-month,-tot.art,-ue.change) %>%
+  mutate(lag.eldre=lag(eldre),lag.innvandring=lag(innvandring),lag.skattavgift=lag(skattavgift),lag.samferdsel=lag(samferdsel)) %>% 
   na.omit()#removing irrelevant and double-counting columns
 
 # Creating a data partition to make a balanced split of the data.
@@ -329,6 +373,9 @@ bt.mod <- train(pcts.frp ~ .,
                           trControl = ctrl
 )
 bt.mod
+
+varImp(ols.mod)
+varImp(rf.mod)
 varImp(bt.mod) 
 
 #### Prediction/Testing the models ####
@@ -341,13 +388,16 @@ results <- tibble(ols.pred, rf.pred, bt.pred,
   mutate(ols.error=ols.pred-pcts.frp, #columns for errors
          rf.error=rf.pred-pcts.frp,
          bt.error=bt.pred-pcts.frp) %>% 
-  mutate(mse.ols=mean(ols.error^2),
+  mutate(mse.ols=mean(ols.error^2), #mean square errors
          mse.rf=mean(rf.error^2),
          mse.bt=mean(bt.error^2))
 
-# random forest has lowest mean square errors, looks like the best.
+# boosting tree has lowest mean square errors, but rf/ols is more centered
+summary(bt.mod)
 
-# check histogram of errors
+# however, rf/ols also have large outliers, so sticking with bt
+
+## check histogram of errors
 
 results %>%
   ggplot() +
@@ -357,3 +407,4 @@ results %>%
   labs(y="Density",x="Error")+
   ggtitle("Density plot of errors")+
   geom_vline(xintercept=0)
+
