@@ -129,9 +129,9 @@ valgresultater[73:76,1]<-"Finnmark" #easier name to work with
 valgresultater<-pivot_wider(valgresultater,names_from=fireårlig,values_from=value) %>% 
   select(-statistikkvariabel,-"politisk parti") %>% 
   rename(countynm=region)
- 
+
 tidymap<-inner_join(valgresultater,tidymap, by =c("countynm"="countynm"))
- 
+
 #### plotting ####
 ggplot(tidymap$geometry)+
   geom_sf(aes(fill = tidymap$`2021`))+
