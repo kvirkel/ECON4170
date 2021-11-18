@@ -122,19 +122,13 @@ d.tmp <- POST(url , body = data, encode = "json", verbose())
 
 valgresultater <- fromJSONstat(content(d.tmp, "text"))
 
-valgresultater[73:76,1]<-"Finnmark"
-
-View(valgresultater)
+valgresultater[73:76,1]<-"Finnmark" #easier name to work with
 
 #### merging data frames ####
 
-result09<-filter(valgresultater,fireårlig==2009)
-result13<-filter(valgresultater,fireårlig==2013)
-result17<-filter(valgresultater,fireårlig==2017)
-result21<-filter(valgresultater,fireårlig==2021)
+valgresultater<-pivot_wider(valgresultater,names_from=fireårlig,values_from=value) %>% 
+  select(-statistikkvariabel,-"politisk parti") %>% 
+  rename(countynm=region)
 
-tidymap$ps2009 <- ifelse(result09$region==tidymap$countynm,result09$value,0)
-tidymap$ps2013 <- ifelse(result13$region==tidymap$countynm,result13$value,0)
-tidymap$ps2017 <- ifelse(result17$region==tidymap$countynm,result17$value,0)
-tidymap$ps2021 <- ifelse(result21$region==tidymap$countynm,result21$value,0)
-
+tidymap<-inner_join(valgresultater,tidymap, by =c("countynm"="countynm"))
+  
