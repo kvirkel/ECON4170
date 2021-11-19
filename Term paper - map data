@@ -1,14 +1,5 @@
 #### required packages ####
 
-install.packages("PxWebApiData")
-install.packages("rjstat")
-install.packages("sf")
-install.packages("tibble")
-install.packages("ggplot2")
-install.packages("rjson")
-install.packages("httr")
-install.packages("dplyr")
-
 library(PxWebApiData)
 library(rjstat)
 library(httr)
@@ -17,8 +8,12 @@ library(tibble)
 library(ggplot2)
 library(rjson)
 library(dplyr)
+library(mtcars)
+library(cowplot)
 
 #### creating map file ####
+
+rm(list=ls())
 
 tmp1 <- tempfile()
 download.file("http://api.thenmap.net/v2/no-4/geo/2008-01-01",
@@ -136,25 +131,25 @@ tidymap<-inner_join(valgresultater,tidymap, by =c("countynm"="countynm"))
 p2021<- ggplot(tidymap$geometry)+
   geom_sf(aes(fill = tidymap$`2021`))+
     labs(title="FRP's result in the 2021 election",fill="result (pp)")+
-  scale_fill_viridis_c(option="mako",direction=-1) +
+  scale_fill_viridis_c(option="mako",direction=-1,limits=c(0,30)) +
   theme_void()
 
 p2017 <- ggplot(tidymap$geometry)+
   geom_sf(aes(fill = tidymap$`2017`))+
   labs(title="FRP's result in the 2017 election",fill="result (pp)")+
-  scale_fill_viridis_c(option="mako",direction=-1) +
+  scale_fill_viridis_c(option="mako",direction=-1,limits=c(0,30)) +
   theme_void()
 
 p2013 <- ggplot(tidymap$geometry)+
   geom_sf(aes(fill = tidymap$`2013`))+
   labs(title="FRP's result in the 2013 election",fill="result (pp)")+
-  scale_fill_viridis_c(option="mako",direction=-1) +
+  scale_fill_viridis_c(option="mako",direction=-1,limits=c(0,30)) +
   theme_void()
 
 p2009 <- ggplot(tidymap$geometry)+
   geom_sf(aes(fill = tidymap$`2009`))+
   labs(title="FRP's result in the 2009 election",fill="result (pp)")+
-  scale_fill_viridis_c(option="mako",direction=-1) +
+  scale_fill_viridis_c(option="mako",direction=-1,limits=c(0,30)) +
   theme_void()
 
 plot_grid(p2021,p2017,p2013,p2009)
