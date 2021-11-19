@@ -412,3 +412,4 @@ results %>%
   labs(y="Percentage points",x="Month number in test period")+
   ggtitle("Actual vs. predicted results")
 
+print(results[56,]) ## see predicted values of last available month - august 2021
