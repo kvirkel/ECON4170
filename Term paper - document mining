@@ -1,57 +1,56 @@
-rm(list=ls())
-
-install.packages("pdftools")
-install.packages("tm")
-install.packages("SnowballC")
-install.packages("NLP")
-install.packages("reader")
-
-library(pdftools)
 library(tm)
-library(SnowballC)
-library(reader)
-library(NLP)
+library(pdftools)
 
-## Importing the PDF documents into R ##
+## IMPORTING PDFs ##
 
-# Setting working directory to the folder containing
-# the FRP party programs.
+# Set working directory to the folder containing the party program pdfs
 setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R/Partiprogrammer")
-
-# Import PDF file names
-# Creating vector of the PDF files in the "TextMining" folder,
-# done by only including files ending with ".pdf".
 FRP_PDFs <- list.files(pattern = "pdf$")
 
-# Thus, we have the "FRP_PDFs"-vector containing all four PDFs
 
-# Now, extracting the actual text from the documents, by using
-# the pdftools package function for extracting text: pdf_text.
-# By using the lapply function, the pdf_text function can be applied
-# to every element in the "FRP_PDFs"-vector, to create a list object
-# called "FRP_Party_Programs".
-
-FRP_Party_Programs <-  lapply(FRP_PDFs, pdf_text)
-
-# FRP_Party_Programs should be a list object containing four elements,
-# one for each party program. That is confirmed by checking the length
-# of the object:
-
-length(FRP_Party_Programs)
-
-# Each PDF file is a vector in the FRP_Party_Programs vector. The length
-# of each vector is the number of pages in each vector.
-# The party programs for 2009-13; 2013-17; 2017-21; 2021-25 have 
-# 92, 86, 90 and 132 pages, respectively.
-# To confirm that we have imported all the pages of the PDFs, we apply 
-# the length function to each element:
-
-lapply(FRP_Party_Programs, length) 
-
-# Confirming the length of each vector, and thus all of the PDFs have 
-# successfully been loaded into R.
-
-FRP_Party_Programs
+# Creating list
+party_programs <- lapply(FRP_PDFs, pdf_text)
 
 
-## Cleaning the Data and Text mining ##
+# Checking list length to confirm the four pdfs have been imported
+length(party_programs)
+
+
+# Checking length of each pdf to confirm all pages are included
+# The party programs for 2009-13; 2013-17; 2017-21; 2021-25 should 
+# have 92, 86, 90 and 132 pages, respectively.
+lapply(party_programs, length)
+
+
+# Creating the Party Program vector
+PP_vector <- Corpus(VectorSource(party_programs))
+
+# Inspect the program for 2009-13
+inspect(PP_vector[1:1])
+
+## Cleaning the corpus ##
+
+# Creating cleaning function
+cleanityMcClean <- function(PP_vector){
+  PP_vector <- tm_map(PP_vector, content_transformer(tolower))
+  PP_vector <- tm_map(PP_vector, removePunctuation)
+  PP_vector <- tm_map(PP_vector, removeNumbers)
+  PP_vector <- tm_map(PP_vector, removeWords, words= stopwords("norwegian"))
+  PP_vector <- tm_map(PP_vector, stripWhitespace)
+  return(PP_vector)
+}
+
+PP_vector1 <- cleanityMcClean(PP_vector)
+
+# create term matrix PP_dtm
+PP_dtm <- TermDocumentMatrix(PP_vector1, 
+                             control = list(bounds = list(global = c(3,Inf))))
+
+FT <-  findFreqTerms(PP_dtm, lowfreq = 40,highfreq = 1000)
+as.matrix(PP_dtm[FT,])
+
+#Sort the count of all frequently
+FT_dtm <- as.matrix(PP_dtm[FT,])
+
+sort(apply(FT_dtm,1,sum), decreasing = TRUE)
+     
