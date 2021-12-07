@@ -8,6 +8,7 @@ library(tidytext)
 library(tidyverse)
 library(SnowballC)
 library(wordcloud)
+library(wesanderson) # pretty color palettes
 
 ##########################
 ## Problem 1: Exam 2020 ##
@@ -46,32 +47,33 @@ U(2, 2)
 px <- 1
 py <- 2
 R <- 10
-xseq <- seq(0.01, 5, length.out = 100) ##length.out=n
+xseq <- seq(0.01, 5, length.out = 100) ## length.out=n
 
 ggplot() +
   geom_line(aes(x = xseq, y = (U(xseq, (R - px * xseq) / py)))) +
   labs(x = "x", y = "Utility")
 
 ## Finding demand for each good
-Ux <- function(x) { 
-  return( 
-    -U(x,(R-px*x)/py)) ## Optim by default is minimizing, but we can max by adding a minus in front
+Ux <- function(x) {
+  return(
+    -U(x, (R - px * x) / py)
+  ) ## Optim by default is minimizing, but we can max by adding a minus in front
 }
 
 
-demand <- optim(0,Ux) ## Optim finds the x that max utility given constraint and initial value 0
+demand <- optim(0, Ux) ## Optim finds the x that max utility given constraint and initial value 0
 demand$par ## Solution stored in object called "par".
-(R-px*demand$par)/py ## Consumption of y in equilibrium
+(R - px * demand$par) / py ## Consumption of y in equilibrium
 
 
 #### Task C: Engel curve of x ####
-Rseq <- seq(0,15,length.out=100) ## sequence of different Rs
+Rseq <- seq(0, 15, length.out = 100) ## sequence of different Rs
 
 ## Calculate demand for different R' and store in xs
-xseq <- NULL 
-for (R in Rseq) { 
-  opt <- optim(0,Ux) ## R is in the Ux function, so we get different results when we change R
-  xseq <- c(xseq,opt$par) 
+xseq <- NULL
+for (R in Rseq) {
+  opt <- optim(0, Ux) ## R is in the Ux function, so we get different results when we change R
+  xseq <- c(xseq, opt$par)
 }
 ## Plot
 ggplot() +
@@ -79,56 +81,109 @@ ggplot() +
   labs(x = "Income", y = "Demand for x")
 
 #### Task D: Demand curve ####
-pxseq <- seq(0.2,4, length.out=100) #trial and failure with the interval
+pxseq <- seq(0.2, 4, length.out = 100) # trial and failure with the interval
 
-xseq<-NULL
-for(px in pxseq) {
-  opt<-optim(0,Ux)
-  xseq <- c(xseq,opt$par)
+xseq <- NULL
+for (px in pxseq) {
+  opt <- optim(0, Ux)
+  xseq <- c(xseq, opt$par)
 }
 
-ggplot()+
-  geom_line(aes(x=xseq,y=pxseq))+
-  labs(x="Demand for x", y="Price of x")
+ggplot() +
+  geom_line(aes(x = xseq, y = pxseq)) +
+  labs(x = "Demand for x", y = "Price of x")
 
 
 ############################
 ## Problem 2: Text Mining ##
 ############################
 
-rm(list=ls())
+rm(list = ls())
 
-speeches <- read_csv("speech1516.csv") #tibble is _, table is .
+speeches <- read_csv("speech1516.csv") # tibble is _, table is .
 
-unique(speeches$language) ##see which languages are included
+unique(speeches$language) ## see which languages are included
 
-speeches <- speeches %>% 
-  filter(language=="nob") ## keep data with language nob
+speeches <- speeches %>%
+  filter(language == "nob") ## keep data with language nob
 
 #### Task 1: Learning tidytext ####
 ## a)
-speeches <- speeches %>% 
-  unnest_tokens(word,text) #from problem text
+speeches <- speeches %>%
+  unnest_tokens(word, text) # from problem text
 
 ## b)
 speeches %>%
-  count(word, sort=TRUE)
+  count(word, sort = TRUE)
 
 #### Task 2: Remove frequent words ####
 ## a)
-stopwords <- get_stopwords(language="no") %>% 
-  select(word) %>% 
-  pull() #creates vector. Don't know why as.vector doesn't work??
+stopwords <- get_stopwords(language = "no") %>%
+  select(word) %>%
+  pull() # creates vector. Don't know why as.vector doesn't work??
 
-speeches <- speeches %>% 
+speeches <- speeches %>%
   filter(!word %in% stopwords) # !word in stopwords = select all entries that do not match stopwords list
 
 #### Task 3: Group different grammatical forms of words / stemming ####
-speeches <- speeches %>% 
-  mutate(stem=wordStem(word, language = "norwegian"))
+speeches <- speeches %>%
+  mutate(stem = wordStem(word, language = "norwegian"))
 
-#### Task 4: Word cloud ####
+#### Task 4: List of top words####
 
-topwords <- speeches %>% count(stem,sort=T)
+topwords <- speeches %>% count(stem, sort = T)
 
-wordcloud(words=topwords$stem, freq=topwords$n, max.words=50)
+#### Task 5: Word cloud ####
+
+wordcloud(words = topwords$stem, freq = topwords$n, max.words = 100, colors = wes_palette("Darjeeling1"))
+
+# If you want to use the included palettes (not wesanderson, you can use the code
+# brewer.pal(n=NUMBER OF COLORS,name="NAME OF RCOLORBREWER PALETTE")
+# instead of wes_palette("...")
+
+#### Task 6: Compare parties ####
+
+## a)
+partyspeech <- speeches %>%
+  filter(party_name == "Høyre" | party_name == "Arbeiderpartiet")
+
+## b)
+
+freq <- partyspeech %>%
+  group_by(party_name) %>%
+  count(stem, sort = T, name = "occ") %>%
+  mutate(n = n()) %>% ## n is a function from dplyr and n() returns the group size
+  mutate(rel_occ = occ / n) %>%
+  select(-n)
+
+## c)
+freq <- freq %>%
+  select(-occ) %>% # need to remove this to avoid easy pivoting
+  pivot_wider(names_from = party_name, values_from = rel_occ)
+
+## d)
+
+# do same as in b and c, but exclude all n<10
+freq2 <- partyspeech %>%
+  group_by(party_name) %>%
+  count(stem, sort = T, name = "occ") %>%
+  mutate(n = n()) %>% ## n is a function from dplyr and n() returns the group size
+  mutate(rel_occ = occ / n) %>%
+  filter(occ >= 10) %>%
+  select(-n)
+
+freq2 <- freq2 %>%
+  select(-occ) %>% # need to remove this to avoid easy pivoting
+  pivot_wider(names_from = party_name, values_from = rel_occ)
+
+# plotting
+freq2 %>%
+  ggplot(aes(x = Arbeiderpartiet, y = Høyre)) +
+  geom_point(alpha = 0.1, size = 2.5) + # alpha is transparency
+  geom_text(aes(label = stem), size = 3, check_overlap = TRUE, vjust = 1.5) # plots words
+# check_overlap allows overlapping of words in plot, which is obviously necessary
+
+freq2 %>%
+  ggplot(aes(x = Arbeiderpartiet, y = Høyre)) +
+  geom_text(aes(label = stem), size = 3, check_overlap = TRUE, vjust = 1.5) # plots words
+# maybe even prettier without dots?
