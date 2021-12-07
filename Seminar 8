@@ -1,0 +1,134 @@
+## Seminar 8 - Week 46 ##
+
+setwd("C:/Users/lbskyum/OneDrive - Universitetet i Oslo/Documents/R/ECON4170 - Data Science")
+
+#### Packages ####
+library(ggplot2)
+library(tidytext)
+library(tidyverse)
+library(SnowballC)
+library(wordcloud)
+
+##########################
+## Problem 1: Exam 2020 ##
+##########################
+
+## Two goods, x and y. Income R and face prices px and py.
+## U(x) = (x^(1-gamma)) / (1-gamma) + psi*((y^(1-theta))/(1-theta))
+
+#### Task A: Create function ####
+gamma <- 0.5
+psi <- 2
+theta <- 0.3
+
+## basic version ##
+x <- NULL
+y <- NULL
+
+function1 <- (x^(1 - gamma)) / (1 - gamma) + psi * ((y^(1 - theta)) / (1 - theta))
+
+x <- 2
+y <- 2
+function1
+
+## Creating a proper R function that does everything ##
+U <- function(x, y) {
+  return(x^(1 - gamma) / (1 - gamma) + psi * y^(1 - theta) / (1 - theta))
+}
+
+U(2, 2)
+
+#### Task B: Varying levels of x ####
+
+## Y is given by budget constraint R = px*x + py*y
+## -> y = (R - px*xseq) / py
+
+px <- 1
+py <- 2
+R <- 10
+xseq <- seq(0.01, 5, length.out = 100) ##length.out=n
+
+ggplot() +
+  geom_line(aes(x = xseq, y = (U(xseq, (R - px * xseq) / py)))) +
+  labs(x = "x", y = "Utility")
+
+## Finding demand for each good
+Ux <- function(x) { 
+  return( 
+    -U(x,(R-px*x)/py)) ## Optim by default is minimizing, but we can max by adding a minus in front
+}
+
+
+demand <- optim(0,Ux) ## Optim finds the x that max utility given constraint and initial value 0
+demand$par ## Solution stored in object called "par".
+(R-px*demand$par)/py ## Consumption of y in equilibrium
+
+
+#### Task C: Engel curve of x ####
+Rseq <- seq(0,15,length.out=100) ## sequence of different Rs
+
+## Calculate demand for different R' and store in xs
+xseq <- NULL 
+for (R in Rseq) { 
+  opt <- optim(0,Ux) ## R is in the Ux function, so we get different results when we change R
+  xseq <- c(xseq,opt$par) 
+}
+## Plot
+ggplot() +
+  geom_line(aes(x = Rseq, y = xseq)) +
+  labs(x = "Income", y = "Demand for x")
+
+#### Task D: Demand curve ####
+pxseq <- seq(0.2,4, length.out=100) #trial and failure with the interval
+
+xseq<-NULL
+for(px in pxseq) {
+  opt<-optim(0,Ux)
+  xseq <- c(xseq,opt$par)
+}
+
+ggplot()+
+  geom_line(aes(x=xseq,y=pxseq))+
+  labs(x="Demand for x", y="Price of x")
+
+
+############################
+## Problem 2: Text Mining ##
+############################
+
+rm(list=ls())
+
+speeches <- read_csv("speech1516.csv") #tibble is _, table is .
+
+unique(speeches$language) ##see which languages are included
+
+speeches <- speeches %>% 
+  filter(language=="nob") ## keep data with language nob
+
+#### Task 1: Learning tidytext ####
+## a)
+speeches <- speeches %>% 
+  unnest_tokens(word,text) #from problem text
+
+## b)
+speeches %>%
+  count(word, sort=TRUE)
+
+#### Task 2: Remove frequent words ####
+## a)
+stopwords <- get_stopwords(language="no") %>% 
+  select(word) %>% 
+  pull() #creates vector. Don't know why as.vector doesn't work??
+
+speeches <- speeches %>% 
+  filter(!word %in% stopwords) # !word in stopwords = select all entries that do not match stopwords list
+
+#### Task 3: Group different grammatical forms of words / stemming ####
+speeches <- speeches %>% 
+  mutate(stem=wordStem(word, language = "norwegian"))
+
+#### Task 4: Word cloud ####
+
+topwords <- speeches %>% count(stem,sort=T)
+
+wordcloud(words=topwords$stem, freq=topwords$n, max.words=50)
