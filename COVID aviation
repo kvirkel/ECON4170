@@ -7,13 +7,11 @@ library(lubridate)
 library(tictoc)
 
 #### Task 1: Writing a loop to import all datasets
-flightlist_20190101_20190131 <- read_csv("flightlist_20190101_20190131.csv.gz")
-
 s <- stamp("19810231") # check format
 
-flight.day <- tibble()
-
 tic("tidsbruk")
+
+flight.day <- tibble()
 
 for (date.first in seq(from = as.Date("2019-01-01"),
                        to = as.Date("2021-08-01"),
