@@ -1,0 +1,113 @@
+## Eight Queens Problem ##
+
+#### Packages #####
+
+
+#### Problem 1: Threatening ####
+# Queens threaten each other if they are horizontally, vertically or diagonally
+# place
+
+# horizontal: y1=y2
+# vertical: x1=x2
+# diagonal: |x1-x2|=|y1-y2|
+
+threaten <- function(x1, y1, x2, y2) {
+  threat.hor <- (y1 == y2)
+  threat.vert <- (x1 == x2)
+  threat.diag <- abs(x1 - x2) == abs(y1 - y2)
+  return(threat.hor | threat.vert | threat.diag)
+}
+
+#### Problem 2: Placements ####
+# How many ways can you place eight queens on a chessboard?
+# Not taking threatening into account
+
+# 64 spots, eight queens
+
+spots <- choose(64, 8) # how many ways can we choose 8 spots out of 64?
+# enormous number, let's not try to calculate all those
+
+#### Problem 3: Restrictions ####
+# there can only be 1 queen per column and row
+# 8 possible places for row 1
+# 7 possible places for row 2
+# etc
+# 8*7*6*5*4*3*2*1 = 8!
+
+spots <- factorial(8)
+
+#### Problem 4: Redoing Threat function ####
+# row.number = y2;   1:(row.number-1)=y for all previous queens
+threatened <- function(x, row.number, old.x) {
+  if (row.number == 1) {
+    return(FALSE)
+  } else {
+    return(any(abs(x - old.x) == abs(row.number - 1:(row.number - 1)))) # any is to vectorize the test
+  }
+}
+#### Problem 5: Loop for each row ####
+
+size <- 8 # 8x8 board
+solutions <- 0
+
+check.row <- function(row.number, positions) {
+  relevant_x <- 1:size
+  relevant_x <- relevant_x[!relevant_x %in% positions] # only keep x's that are not vertically threatened
+  for (x in relevant_x) { # loop over all relevant x's
+    if (!threatened(x, row.number, positions)) { # If the x is not threatened diagonally
+      if (row.number < size) {
+        check.row(row.number + 1, c(positions, x)) # continue searching
+      } else {
+        print(c(positions, x)) # or print results if reached top of board
+      }
+    }
+  }
+}
+
+check.row(1,c())
+
+
+#### Problem 6: Storing results in Data Frame and printing ####
+# same function as in 5, but modified
+
+check.row <- function(row.number, positions) {
+  relevant_x <- 1:size
+  relevant_x <- relevant_x[!relevant_x %in% positions] # only keep x's that are not vertically threatened
+  for (x in relevant_x) { # loop over all relevant x's
+    if (!threatened(x, row.number, positions)) { # If the x is not threatened diagonally
+      if (row.number < size) {
+        check.row(row.number + 1, c(positions, x)) # continue searching
+      } else {
+        solutions <- matrix(1,nrow=8,ncol=8)
+        for (i in 1:8) {
+          solutions[i,positions[i]] <-0
+        }
+        image(1:8,1:8,solutions,col=gray.colors(2),xaxt="n",yaxt="n")
+        grid(8,8,col="black",lty=1)
+      }
+    }
+  }
+}
+par(mfrow = c(10,10),mai = c(0.1, 0.1, 0.1, 0.1))
+
+check.row(1,c())
+
+#### Problem 7: n queens for n x n boards ####
+size <- 5
+solutions <- 0
+
+check.row <- function(row.number, positions) {
+  relevant_x <- 1:size
+  relevant_x <- relevant_x[!relevant_x %in% positions] # only keep x's that are not vertically threatened
+  for (x in relevant_x) { # loop over all relevant x's
+    if (!threatened(x, row.number, positions)) { # If the x is not threatened diagonally
+      if (row.number < size) {
+        check.row(row.number + 1, c(positions, x)) # continue searching
+      } else {
+        solutions <<- solutions+1
+      }
+    }
+  }
+}
+check.row(1,c())
+solutions
