@@ -1,0 +1,125 @@
+## Aviation during COVID ##
+setwd("C:/Users/lbskyum/OneDrive - Universitetet i Oslo/Documents/R/ECON4170 - Data Science/Flightlists")
+
+#### packages ####
+library(tidyverse)
+library(lubridate)
+library(tictoc)
+
+#### Task 1: Writing a loop to import all datasets
+flightlist_20190101_20190131 <- read_csv("flightlist_20190101_20190131.csv.gz")
+
+s <- stamp("19810231") # check format
+
+flight.day <- tibble()
+
+tic("tidsbruk")
+
+for (date.first in seq(from = as.Date("2019-01-01"),
+                       to = as.Date("2021-08-01"),
+                       by = "months")) {
+  date.first <- as_date(date.first)
+  date.last <- date.first + months(1) - days(1)
+  
+  if (date.last==ymd(20210531)) date.last=ymd(20210530) #adjust to error in data title
+  
+  #creating all the names
+  filed <- paste('flightlist_',s(date.first),'_',s(date.last),sep='')
+  filen <- paste('https://zenodo.org/record/5377831/files/',filed,'.csv.gz', sep='')
+  print(filen)
+
+fl <- read_csv(filen)
+fl.day <- fl %>% 
+  group_by(day) %>% 
+  summarise(count=n())
+flight.day <- bind_rows(flight.day, fl.day)
+}
+
+toc()
+
+# plotting
+ggplot(flight.day,aes(x=day,y=count/1000)) +
+  geom_line() +
+  xlab("Date") + ylab("Flights (in 1000)")
+
+#### Task 2: Only flights from Gardermoen ####
+# exactly same as 1, but include filter for Gardermoen code in "origin" column
+
+flight.ENGM <- tibble() #ENGM is the ICAO code for Gardermoen
+
+for (date.first in seq(from=as.Date("2019-01-01"),
+                       to= as.Date("2021-08-01"),
+                       by="months")) {
+  date.first <- as_date(date.first)
+  date.last <- date.first+months(1)-days(1)
+
+  if (date.last==ymd(20210531)) date.last=ymd(20210530)
+ 
+  filed <- paste('flightlist_',s(date.first),'_',s(date.last),sep='')
+  filen <- paste('https://zenodo.org/record/5377831/files/',filed,'.csv.gz', sep='')
+  fl <- read_csv(filen)
+  fl.gm <- fl %>%
+    filter(origin == 'ENGM') %>% 
+    group_by(day) %>%
+    summarise(count=n())
+  flight.ENGM <- bind_rows(flight.gardermoen,fl.gm)
+}
+
+ggplot(flight.ENGM,aes(x=day,y=count)) +
+  geom_line() +
+  xlab("Date") + ylab("Flights")
+
+#### Task 3: Converting ICAO to continents ####
+# Defining tibble to extract first letter of code
+ICAO.reg <- tibble(
+  areacode = LETTERS, # LETTERS creates a vector of the alphabet
+  region = case_when( # case_when is used when you need multiple if_else()
+    areacode %in% c('U', 'O', 'Z', 'V', 'R', 'W') ~ "Asia",
+    areacode %in% c('B', 'E', 'L') ~ "Europe",
+    areacode %in% c('C', 'K', 'P') ~ "NAmerica",
+    areacode %in% c('S', 'M', 'T') ~ "SAmerica",
+    areacode %in% c('G', 'D', 'H', 'F') ~ "Africa",
+    areacode %in% c('A', 'Y', 'N') ~ "Oceania"
+  )
+)
+
+# Same code as above, but left_join with our code tibble
+
+flight.day.cont <- tibble()
+
+for (date.first in seq(from=as.Date("2019-01-01"),
+                       to= as.Date("2021-08-01"),
+                       by="months")) {
+  date.first <- as_date(date.first)
+  date.last <- date.first+months(1)-days(1)
+
+  if (date.last==ymd(20210531)) date.last=ymd(20210530)
+  
+  filed <- paste('flightlist_',s(date.first),'_',s(date.last),sep='')
+  filen <- paste('https://zenodo.org/record/5377831/files/',filed,'.csv.gz', sep='')
+  
+  fl <- read_csv(filen)
+  fl.cont <- fl %>%
+    mutate(icao.origin = str_sub(origin,1,1)) %>% #extracting first letter from origin
+    mutate(icao.dest = str_sub(destination,1,1)) %>% # extracting first letter from destination
+    left_join(ICAO.reg, by=c('icao.origin'='code')) %>% #giving each flight the correct origin
+    rename(reg.origin=region) %>% #renaming so we know it's the origin
+    left_join(ICAO.reg, by=c('icao.dest'='code')) %>% #same for destination
+    rename(reg.dest=region) %>% # same for destination 
+    mutate(route=paste(reg.origin,reg.dest,sep = '_'), #create route column
+           intercont=reg.origin!=reg.dest) # indicating if intercontinental or not
+  fl.cont.day <- fl.cont %>%
+    group_by(day,intercont) %>%
+    summarise(count=n())
+  flight.day.cont <- bind_rows(flight.day.cont,fl.cont.day)
+}
+
+## plotting
+flight.day.cont %>%
+  filter(!is.na(intercont)) %>%
+  ggplot(aes(x=day,y=count/1000)) +
+  geom_line() +
+  xlab("Date") + ylab("Flights (in 1000)") +
+  facet_grid(rows = vars(intercont), scales = 'free')
+
+# Check what is false and what is true
