@@ -106,9 +106,9 @@ for (date.first in seq(from=as.Date("2019-01-01"),
   fl.cont <- fl %>%
     mutate(icao.origin = str_sub(origin,1,1)) %>% #extracting first letter from origin
     mutate(icao.dest = str_sub(destination,1,1)) %>% # extracting first letter from destination
-    left_join(ICAO.reg, by=c('icao.origin'='code')) %>% #giving each flight the correct origin
+    left_join(ICAO.reg, by=c('icao.origin'='areacode')) %>% #giving each flight the correct origin
     rename(reg.origin=region) %>% #renaming so we know it's the origin
-    left_join(ICAO.reg, by=c('icao.dest'='code')) %>% #same for destination
+    left_join(ICAO.reg, by=c('icao.dest'='areacode')) %>% #same for destination
     rename(reg.dest=region) %>% # same for destination 
     mutate(route=paste(reg.origin,reg.dest,sep = '_'), #create route column
            intercont=reg.origin!=reg.dest) # indicating if intercontinental or not
