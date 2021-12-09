@@ -1,0 +1,25 @@
+## k-means clustering ##
+
+#### Packages ####
+library(tidyverse)
+
+#### Creating data to work with ####
+set.seed(1337)
+N.k <- 100 # 100 observations per cluster
+k <- 2 # 2 clusters
+
+d1 <- tibble(
+  x = rnorm(N.k),
+  y = rnorm(N.k)
+)
+
+d2 <- tibble(
+  x = rnorm(N.k, mean = 2),
+  y = rnorm(N.k, mean = 2)
+)
+d <- rbind(d1, d2)
+
+dmat <- as.matrix(d)
+
+rm(d, d1, d2, k, N.k)
+
