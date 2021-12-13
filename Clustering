@@ -18,8 +18,127 @@ d2 <- tibble(
   y = rnorm(N.k, mean = 2)
 )
 d <- rbind(d1, d2)
+d %>% ggplot(aes(x=x,y=y))+geom_point()
 
 dmat <- as.matrix(d)
 
-rm(d, d1, d2, k, N.k)
+#### Task 1: Draw lines to use as initial centroids ####
+
+centroids <- d %>% 
+  slice_sample(n=k) # n=k: draw equal number of centroids as there are clusters
+
+#### Task 2 & 3: Compute differences and assign points to closest centroid
+c1 <- as.matrix(centroids[1,]) # convert first row of centroids to matrix
+c1 <- matrix(c1,ncol=2,nrow=nrow(d),byrow=T) #same number of rows as all our random variables
+d1 <- rowSums((c1-dmat)^2) #computing differences between each point and their centroid
+
+# doing the same for the second row of centroids
+c2 <- as.matrix(centroids[2,])
+c2 <- matrix(c2, ncol=2,nrow=nrow(d),byrow=T)
+d2 <- rowSums((c2-dmat)^2)
+
+clusters <-ifelse(d1<d2,1,2) #1 if closest to centroid 1, 2 if closest to centroid 2
+
+#### Task 4: Recalculating centroids ####
+clusters <- as.matrix(clusters)
+
+test1 <- d %>% 
+  mutate(cluster=clusters) %>% 
+  filter(cluster==1)
+
+test2 <- d %>% 
+  mutate(cluster=clusters) %>% 
+  filter(cluster==2)
+
+newcentroids <- tibble() %>%
+  { .[1,1] <- mean(test1[["x"]]); . } %>% 
+  { .[1,2] <- mean(test1[["y"]]); . } %>%
+  { .[2,1] <- mean(test2[["x"]]); . } %>% 
+  { .[2,2] <- mean(test2[["y"]]); . } %>% 
+  setNames(.,c("x","y"))
+
+## easier method ##
+newcentroids2 <- d %>% 
+  mutate(cluster=clusters) %>% 
+  group_by(cluster) %>% 
+  summarise_all(mean) %>% 
+  select(-cluster)
+
+#### Task 5: While loop ####
+#create starting values
+old_clusters <- rep(0,nrow(d))
+clusters=old_clusters+1
+max.iter <- 1000 # to not go on forever
+iter <- 0
+centroids <- d %>% slice_sample(n=k) # same as before, but in case you've changed centroids at some point
+
+## construct loop
+
+while(any(clusters=!old_clusters) & iter < max.iter) {
+  iter <-iter+1
+  old_clusters=clusters
+  
+  # distance for cluster 1
+  c1 <- as.matrix(centroids[1,]) # first row for first cluster (as before)
+  c1 <- matrix(c1, ncol=2,nrow=nrow(d),byrow=T)
+  d1 <- rowSums((c1-dmat)^2)
+  # distance for cluster 2
+  c2 <- as.matrix(centroids[2,]) # first row for first cluster (as before)
+  c2 <- matrix(c2, ncol=2,nrow=nrow(d),byrow=T)
+  d2 <- rowSums((c2-dmat)^2)
+  
+  # assign cluster to the shortest distance
+  clusters <- ifelse(d1<d2,1,2)
+  
+  # new centroids
+  centroids <- d %>% 
+    mutate(cluster=clusters) %>% 
+    group_by(cluster) %>% 
+    summarise_all(mean) %>% 
+    select(-cluster)
+}
+
+## plot the clusters
+d %>% 
+  mutate(cluster=clusters) %>% 
+  ggplot (aes(x=x,y=y))+
+  geom_point(aes(color=as.factor(cluster)))+
+  geom_point(data=centroids,
+             aes(x=x,y=y),
+             shape=10,color="black",size=7)
+
+#### Extra: Extension to larger dimensions and more clusters ####
+## same initialization as above
+centroids <- d %>% slice_sample(n=k)
+old_clusters <- rep(0,nrow(d))
+clusters=old_clusters+1
+max.iter <- 1000 # to not go on forever
+iter <- 0
+
+# Loop
+while(any(clusters=!old_clusters) & iter < max.iter) {
+  iter <-iter+1
+  old_clusters=clusters
+  dists <- NULL
+  for(c in 1:k) {
+    dist <- centroids[c,] %>% 
+      as.matrix() %>% 
+      matrix(ncol=2,nrow=nrow(d),byrow=T)
+    dists <- cbind(dists,rowSums((dist-dmat)^2))
+  }
+  clusters <- apply(dists,1,which.min)
+  centroids <- d %>% 
+    mutate(cluster=clusters) %>% 
+    group_by(cluster) %>% 
+    summarise_all(mean) %>% 
+    select(-cluster)
+}
+
+d %>% 
+  mutate(cluster=clusters) %>% 
+  ggplot (aes(x=x,y=y))+
+  geom_point(aes(color=as.factor(cluster)))+
+  geom_point(data=centroids,
+             aes(x=x,y=y),
+             shape=10,color="black",size=7)
 
