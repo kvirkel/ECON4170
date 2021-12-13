@@ -108,7 +108,28 @@ d %>%
              shape=10,color="black",size=7)
 
 #### Extra: Extension to larger dimensions and more clusters ####
+rm(list=ls())
 ## same initialization as above
+set.seed(1337)
+N.k <- 100 # 100 observations per cluster
+k <- 4 # 2 clusters
+# make d1 and d3 three-dimensional
+d1 <- tibble(
+  x = rnorm(N.k),
+  y = rnorm(N.k),
+  z = rnorm(N.k)
+)
+
+d2 <- tibble(
+  x = rnorm(N.k, mean = 2),
+  y = rnorm(N.k, mean = 2),
+  z = rnorm(N.k, mean = 2)
+)
+
+d <- rbind(d1, d2)
+plot_ly(x=d[["x"]], y=d[["y"]], z=d[["z"]], type="scatter3d", mode="markers") # show in new window to view
+dmat <- as.matrix(d)
+
 centroids <- d %>% slice_sample(n=k)
 old_clusters <- rep(0,nrow(d))
 clusters=old_clusters+1
@@ -123,7 +144,7 @@ while(any(clusters=!old_clusters) & iter < max.iter) {
   for(c in 1:k) {
     dist <- centroids[c,] %>% 
       as.matrix() %>% 
-      matrix(ncol=2,nrow=nrow(d),byrow=T)
+      matrix(ncol=3,nrow=nrow(d),byrow=T)
     dists <- cbind(dists,rowSums((dist-dmat)^2))
   }
   clusters <- apply(dists,1,which.min)
@@ -134,11 +155,8 @@ while(any(clusters=!old_clusters) & iter < max.iter) {
     select(-cluster)
 }
 
-d %>% 
-  mutate(cluster=clusters) %>% 
-  ggplot (aes(x=x,y=y))+
-  geom_point(aes(color=as.factor(cluster)))+
-  geom_point(data=centroids,
-             aes(x=x,y=y),
-             shape=10,color="black",size=7)
+plot <- d %>% 
+  mutate(cluster=clusters)
 
+# 3D plot. open in new window to view
+plot_ly(x=plot[["x"]], y=plot[["y"]], z=plot[["z"]], type="scatter3d", mode="markers", color=plot[["cluster"]])
