@@ -1,0 +1,183 @@
+## Lectures
+
+#### Lecture 2 ####
+
+## Integer division ##
+
+10 %/% 3  # integer division (divisjon med rest)
+10 %% 3   # reminder (rest)
+
+156 %% 3  # is 156 dividable by 3? Yes, because reminder is 0
+
+
+## Strings ##
+word1 <- "hello"
+word2 <- "world"
+
+nchar(word1) #numbers of characters in string
+
+paste(word1,word2,sep=" ") # print "hello world"
+
+
+## Vectors ##
+vec1 <- c(4,7,10)
+vec2 <- c(1,2,3)
+
+vec1*vec2     # does NOT give scalar product - multiplies cell by cell
+vec1 %*% vec2 # matrix multiplicator, gives scalar product
+
+# Other ways to create vectors
+vec3 <- c(1:5)                  # sequence
+vec4 <- rep(1,5)                # repetition
+vec5 <- rep(c(1,2),5)           # repeat other vector
+vec6 <- seq(1,10, by=2)         # sequence with steps > 1
+vec7 <- rnorm(5, mean=5, sd=2)  # random normally distributed
+vec8 <- runif(5, min=0,max=10)  # random within an interval
+
+# Subsetting: Accessing part of a vector
+vec6[3]     # gives 3rd element in vector 6
+vec6[vec3]  # gives element 1, 2, 3, 4 and 5 in vec6
+
+
+## Reading data ##
+setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R") # set working directory
+
+election1 <- read_csv("election.csv")               # to tibble, best use
+election2 <- read.csv("election.csv")               # to data frame, a bit worse I think, but in base R
+election3 <- read_delim("election.csv", delim=",")  # more general command that can be used with other delims
+
+## Conditionals ##
+a=2
+b=3
+
+if (a < 5) {          # if a < 5
+  a*5
+} 
+
+if (a < 5 & b > 1) {  # if a < 5 AND b > 1
+  a*b
+}
+
+if (a < 5 | b < 1) {  # if a < 5 AND/OR b < 1
+  a*b
+}
+
+if ((a > 5 & b < 1) | (a<5 & b >= 3)) { # if a > 5 AND b < 1 OR a < 5 AND b >= 3
+  a*b
+}
+
+## Logical vectors ##
+
+logic1 <- c(T,F,F,T,F)
+
+any(logic1) # is any value in logic1 true? yes
+all(logic1) # are all values in logic1 true? no
+
+any(vec1==2) # no
+any(vec1==4) # yes
+all(vec1>2) # yes
+
+## If / else ##
+
+if (a > 5 & b > 1) {  # if a > 5 AND b > 1
+  a*b 
+  } else {            # if not true
+    a-b
+  }
+
+# example: first 50 000 of your income is deductable
+taxrate <- 0.3
+deduction <-50000
+income <- 500000 # cah change this and see what happens to function
+
+if(income<deduction){
+  tax <- 0
+  print(tax)
+} else {
+  tax <- taxrate*(income-deduction)
+  print(tax)
+}
+
+## Functions ##
+square <- function(x) {
+  return(x*x)
+}
+square(5)
+
+power <- function(x,power){
+  return(x^power)
+}
+power(2,10)
+
+power2 <- function(x,power=2) { # can set default values
+  return(x^power)
+}
+power2(3)
+power2(2,10) # default values can still be overrun
+
+## Sequences / Magrittr ##
+toString(round(as.double("147.6275")))
+
+"147.6275" %>%  # cleaner with magrittr
+  as.double() %>% 
+  round() %>% 
+  toString()
+
+## Recursive calls - functions that call themselves ##
+
+fact <- function(n) { #function for n! (even though this exists with factorial())
+  if (n==1) { # need this "exit" to avoid neverending loop
+    return(1)
+  } else {
+    return(n*fact(n-1))
+  }
+}
+
+fact(5)
+factorial(5) # base R
+
+## For loops ##
+for (i in 1:10) {
+  print(log(i))
+}
+
+sum <- 0 # initiate variable
+sums <- c()
+for (i in 1:10) {
+  sum <- sum+i^2 # summarise all squared numbers 1-10
+  sums[i] <- sum # save result in vector "sums" for each iteration
+}
+
+print(sum) # can put print() outside loop if we only need final value
+
+for(name in c("Per", "Pål", "Espen Askeladd")){
+  print(paste("Hei ",name,"!",sep=""))
+}
+
+for(i in 1:10) {
+  for (j in 1:10) { # nested loop: loop inside loop
+    print(i*j)
+  }
+}
+
+for(i in 1:10) {
+  for (j in i:10) { # avoiding double work (don't need 6*7 AND 7*6)
+    print(i*j)
+  }
+}
+
+## While loops ##
+z=0
+
+while(z<=10) { # set condition, can set more with | 
+  print(z^2)
+  z <- z+1
+}
+
+## Ifelse function ##
+ifelse(income>deduction, taxrate*(income-deduction),0) # shorter version of previous example
+# "same" as in excel
+# good for simple ifelses
+
+
+
