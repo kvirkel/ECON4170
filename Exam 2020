@@ -1,0 +1,176 @@
+## Exam fall 2020 ##
+
+setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R")
+
+#### Packages ####
+library(tidyverse)
+#### Problem 1 ####
+
+## Task a
+
+mobility <- read_csv("2020_NO_Region_Mobility_Report.csv")
+nrow(mobility) # can also just read it from environment
+
+str(mobility) # check variable type for all columns, confirm that R recognises the dates
+max(mobility$date) # can also extract both from summary(mobility$date)
+min(mobility$date)
+
+## Task b
+
+# The UTF-8 encoding is good for Norwegian data since Æ, Ø og Å are included.
+# we do not need a higher UTF, as all the characters we use are covered here,
+# and a higher UTF (16 or 32) would make our data much larger.
+
+## Task c
+oslo <- mobility %>%
+  filter(sub_region_1 == "Oslo")
+
+oslo %>%
+  ggplot() +
+  geom_line(aes(x = date, y = residential_percent_change_from_baseline)) +
+  labs(y = "percentage change in time spent at home", y = "date")
+
+# obviously does not take weekdays vs weekends into account
+
+oslo <- oslo %>%
+  mutate(weekday = weekdays(date)) %>%
+  mutate(weekend = ifelse(weekday == "lørdag" | weekday == "søndag", 1, 0))
+
+## Task d
+
+oslo %>%
+  ggplot() +
+  geom_line(aes(x = date, y = residential_percent_change_from_baseline, color = weekday))
+
+oslo %>%
+  ggplot() +
+  geom_point(aes(x = date, y = residential_percent_change_from_baseline, color = weekend))
+# looks better with scatterplot. Is it possible to fix scale legend?
+
+## Task e
+
+aggregatemob <- mobility %>%
+  filter(is.na(sub_region_2)) %>%
+  filter(!is.na(sub_region_1)) %>%
+  mutate(weekday = weekdays(date)) %>%
+  mutate(weekend = ifelse(weekday == "lørdag" | weekday == "søndag", 1, 0))
+
+aggregatemob %>%
+  ggplot() +
+  geom_line(aes(x = date, y = residential_percent_change_from_baseline, color = sub_region_1)) +
+  facet_grid(rows = vars(weekend), labeller = as_labeller(c("0" = "Hverdag", "1" = "Helg")))
+# the three spikes: Easter, 17th of May, Pentecost/Ascension
+
+
+## Task f
+
+aggregatemob %>%
+  filter(date >= "2020-03-12" & date <= "2020-10-31") %>%
+  group_by(sub_region_1) %>%
+  summarise(
+    mean = mean(residential_percent_change_from_baseline, na.rm = T), # REMEMBER NA.RM=T
+    median = median(residential_percent_change_from_baseline, na.rm = T)
+  ) %>%
+  arrange(mean) # just to sort output
+
+## Task g
+
+nationalmob <- mobility %>%
+  filter(is.na(sub_region_1)) %>%
+  select(residential_percent_change_from_baseline, date) %>%
+  rename(nationalreschange = residential_percent_change_from_baseline)
+
+oslovsnat <- oslo %>%
+  left_join(nationalmob, by = c("date" = "date")) %>%
+  mutate(oslovsnat = (residential_percent_change_from_baseline / nationalreschange)) %>%
+  select(oslovsnat, date)
+
+oslovsnat %>%
+  ggplot() +
+  geom_line(aes(x = date, y = oslovsnat))
+
+#### Problem 2 ####
+
+## Task a
+
+U <- function(x,y) {
+  ((x^0.5)/0.5)+(2*(y^0.7)/0.7)
+}
+
+U(2,2)
+
+## Task b
+
+# R= px*x + py*y -> 10 = x + 2y,  y= (R-px*x)/py
+R <- 10 # we could put it straight into the function, but since R and px changes later, it is easier to do it here
+px <- 1
+py <- 2
+n <- 1
+Uxs <- c()
+for (x in seq(0.1,5, by=.1)) {
+  Uxs[n] <- print(U(x,(R-px*x)/py))
+  n <- n+1
+}
+
+ggplot()+
+  geom_line(aes(x=seq(0.1,5,by=.1),y=Uxs))+
+  labs(x="values of x", y="utility")
+
+Ux <- function(x){
+  -U(x,(R-px*x)/py) #
+}
+xdemand <- optim(0,Ux)
+xdemand$par
+
+## Task c
+n <- 1
+demx <- c()
+for (R in seq(1,50)) {
+  opt <- optim(0, Ux)
+  demx[n] <- opt$par
+  n <- n+1
+}
+
+ggplot()+
+  geom_line(aes(x=seq(1,50),y=demx))+
+  labs(x="values of R", y="demand for x")
+
+## Task d
+R <- 10
+n <- 1
+demx <- c()
+for (px in seq(0.1,2,by=0.1)){
+  opt <- optim(0, Ux)
+  demx[n] <- opt$par
+  n <- n+1
+}
+
+ggplot()+
+  geom_line(aes(x=demx,y=seq(0.1,2,by=0.1)))+
+  labs(x="demand for x", y="price")
+
+#### Problem 3 ####
+
+## Task a
+# lack a clear 0, makes it look like chrome and firefox are much slower than they are
+# also very bad readability
+# solution: Bar chart
+
+speedchart <- tibble(browsername = c("Google Chrome", "Microsoft Edge", "Mozilla Firefox"),
+                     speedscore = c(29.619,31.786,26.876))
+
+speedchart %>% 
+  ggplot()+
+  geom_bar(aes(x=browsername, y=speedscore), stat="identity",fill=c("green","blue","red"))
+
+## Task b
+# same as a, lacks 0, so Latvian women look like they are 5x bigger than Indian women, and 5 x fatter lol
+# also, no lines make it difficult to actually read height
+# again, simple bar chart, but with 0
+
+sizechart <- tibble(country=c("Latvia", "Australia", "Scotland", "Peru","South Africa","India"),
+                    height=c(5.5,5.4,5.4,5.4,5.2,5.0))
+
+sizechart %>% 
+  ggplot()+
+  geom_bar(aes(x=country, y=height), stat="identity",fill="pink")
