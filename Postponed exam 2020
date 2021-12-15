@@ -1,0 +1,159 @@
+## Postponed exam 2020 ##
+setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R")
+
+#### Packages ####
+library(tidyverse)
+library(colorspace)
+library(lubridate)
+library(readxl)
+library(SI)
+#### Task 1 ####
+## task a
+rain <- read_csv("rainfall.csv")
+length(unique(rain$knr)) #length of the vector of all unique municipalities
+
+
+## task b
+# check variable type for each column
+str(rain) # confirming that "date"-column are recognised as dates
+
+rain %>% 
+  filter(knr==301) %>% 
+  filter(date>="2011-06-01" & date <= "3011-08-31") %>% 
+  ggplot()+
+  geom_bar(aes(x=date,y=rain),stat="identity",fill="deepskyblue3")+
+  labs(x="Date",y="Rain (mm)")
+
+## task c
+
+rain %>% 
+  filter(knr==301) %>% 
+  ggplot()+
+  geom_boxplot(aes(x=month(date, label=T),y=rain),fill="deepskyblue3")
+# line is median, box 2nd and 3rd quartile, line is 4th quartile with largest
+# outliers as dots
+
+## task d
+total.rainfall <- rain %>% 
+  group_by(knr) %>% 
+  summarise(total.rainfall=sum(rain))
+
+total.rainfall %>% 
+  slice_max(total.rainfall) # most rain in Modalen
+
+total.rainfall %>% 
+  slice_min(total.rainfall) # least rain in Sør-Varanger
+
+## task e
+total.rainfall <- total.rainfall %>% # extract region
+  mutate(region=as.numeric(substr(knr, 1, nchar(knr)-2)))
+
+total.rainfall <- total.rainfall %>% #just for fun, extract municipality
+  mutate(kommune=as.numeric(substr(knr, start=nchar(knr)-1,nchar(knr))))
+
+regional.rainfall <- total.rainfall %>% 
+  group_by(region) %>% 
+  summarise(mean.rain=mean(total.rainfall))
+
+## task f
+
+rainiest.day <- tibble(aggregate(rain$rain, 
+                                 by=list(rain$knr), 
+                                 max)) %>% 
+  rename(rain=x,knr=Group.1) %>% 
+  left_join(rain,by=c("rain"="rain", "knr"="knr")) %>% 
+  rename(rainiest.day=date)
+
+rainiest.day %>% 
+  group_by(month(rainiest.day)) %>% 
+  summarise(munic=n()) # see how many municipalities had the highest amount of rain each month
+
+## task g
+turnout <- read_excel("Turnout2011.xlsx", 
+                          col_names = c('munic','turnout'), #custom column names
+                          skip = 4, n_max = 435) %>% # start on row 4, max rows 435 (to remove at least some of the unnecessary stuff)
+  filter(!is.na(turnout))
+  
+str(turnout) # see that noth are characters, so we need to turn turnout column to numeric
+
+turnout <- turnout %>% 
+  mutate(turnout=as.numeric(turnout))
+
+mean(turnout$turnout,na.rm=T)
+
+## task h
+turnout <- turnout %>% 
+  mutate(knr=as.numeric(substr(munic, start=1,stop=4)))
+  
+election.rain <- rain %>% 
+  filter(date=="2011-09-13") %>% 
+  left_join(turnout, by=c("knr"="knr")) %>% 
+  select(knr,rain,turnout)
+
+election.rain %>% 
+  ggplot(aes(x=turnout,y=rain))+
+  geom_point()+
+  geom_smooth()
+
+## task i
+election.rain %>% 
+  ggplot(aes(x=turnout))+
+  geom_density()+
+  facet_grid(rows=vars(rain>50),labeller = as_labeller(c("FALSE" = "Lite regn", "TRUE" = "Mye regn")))
+
+#### Problem 2 ####
+set.seed(1337)
+## task a
+
+f <- function(x) {
+  (2*x+5)/((x^2)+1)
+}
+
+N <- 1000
+mc.sol <- mean(f(runif(N,0,1)))
+
+## task b
+
+I.solutions <- c()
+i <- 1
+Nvec <- c(10,100,1e3,1e4,1e5)
+
+for (N in Nvec) {
+  I.solution <- mean(f(runif(N,0,1)))
+  I.solutions[i] <- I.solution
+  i <- i+1
+}
+
+solutions <- tibble(estim=I.solutions,
+                    act=((5*pi/4)+log(2)),
+                    draws=Nvec) %>% 
+  mutate(diff = abs(estim-act))
+
+solutions %>% 
+  ggplot(aes(x=log10(draws)))+
+  geom_line(aes(y=estim),color="darkseagreen3")+
+  geom_line(aes(y=act),color="darkturquoise")+
+  labs(x="estimation of I with 10^x draws")
+
+# see that it's converging
+
+## task c: mid-point rule
+n <- 1000
+btm <- 0
+top <-1
+startseq <- (btm+(top-btm)/n)/2 #middle of first segment
+
+testseq <- seq(startseq, top, by=(top-btm)/n)
+
+midpointsol <- 0
+
+for (x in testseq) {
+  fsol <- f(x)
+  midpointsol <- midpointsol +((top-btm)/n)*fsol #weighting each solution with interval length. https://math.libretexts.org/Courses/Mount_Royal_University/MATH_2200%3A_Calculus_for_Scientists_II/2%3A_Techniques_of_Integration/2.5%3A_Numerical_Integration_-_Midpoint%2C_Trapezoid%2C_Simpson's_rule
+}
+
+# comparing accuracy
+mpdiff <- abs(midpointsol-(5*pi/4)+log(2))
+mcdiff <- abs(mc.sol-(5*pi/4)+log(2))
+
+mpdiff-mcdiff # since < 0, midpoint is slightly more precise
