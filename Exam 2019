@@ -1,0 +1,189 @@
+## Exam 2019
+
+setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R")
+
+#### Packages ####
+library(haven)
+library(tidyverse)
+
+#### Problem 1 ####
+
+## task a
+GDD <- read_dta("GlobalDebtDatabase.dta") #12920 observations
+
+str(GDD) #checking variable type for each column, just good practice
+
+nrow(GDD) #12920 observations
+length(unique(GDD$country)) #190 countries
+
+
+## task b
+
+norwaydebt <- GDD %>%
+  filter(country=="Norway") %>% 
+  filter(year >=2000 & year <= 2017) %>%
+  mutate(totdebt=pvd_ls+gg) %>% 
+  mutate(pvd_share=pvd_ls/totdebt)
+
+norwaydebt %>% 
+  ggplot()+
+  geom_line(aes(x=year,y=totdebt))
+
+norwaydebt %>% 
+  ggplot()+
+  geom_line(aes(x=year,y=pvd_share))
+
+## task c
+nordicdebt <- GDD %>% 
+  filter(country=="Norway"|country=="Sweden"|country=="Denmark"|country=="Finland"|country=="Iceland") %>% 
+  filter(year >=2000 & year <= 2017) %>% 
+  group_by(year) %>% 
+  summarise(mean.gg=mean(gg)) #variable name = variable function. Doesn't have to be sum
+
+## task d
+countrynames <- read_delim("countrynames.csv",delim="\t") #can also do with file -> etc if unsure about delimiter
+
+
+debt2017 <- GDD %>% 
+  filter(year==2017) %>% 
+  left_join(countrynames,by="ifscode") %>% 
+  select(country,gg,pvd_all,local_name)
+
+debt2017 %>% 
+  ggplot(aes(x=gg,y=pvd_all))+
+  geom_point()+
+  geom_text(aes(label=local_name),vjust=1,size=4,check_overlap=T)
+
+## task f
+top2017countries <- debt2017 %>% 
+  slice_max(gg,n=10) %>% 
+  pull(country) #pull creates vector
+
+topcountries <- GDD %>% 
+  filter(country %in% top2017countries) %>%  #filter for all in a vector
+  filter(year >=1990 & year<=2017) %>% 
+  select(country,year,gg)
+
+
+#### Problem 2 ####
+
+## task a
+
+S <- function (p) {
+  2*sqrt(p)
+}
+
+D <- function(p) {
+  10-p
+}
+
+P <- function(q) {
+  10-q
+}
+
+## task b
+
+p <- 2
+pvec <- c()
+pvec[1] <- p
+qvec <- c()
+tp <- c(1:20)
+
+for(t in tp){
+  q <- S(p)
+  p <- P(q)
+  qvec[t+1] <- q
+  pvec[t+1] <- p
+}
+
+pvec
+qvec
+
+# yes, look like they are converging
+
+## task c
+set.seed(1337)
+
+e.D <- function(p) {
+  10-p+rnorm(1)
+}
+
+
+e.P <- function(q){
+  10-q+rnorm(1)
+}
+
+p <- 2
+e.pvec <- c()
+e.pvec[1] <- p
+e.qvec <- c()
+tp <- c(1:20)
+
+for(t in tp){
+  q <- S(p)
+  p <- e.P(q)
+  e.qvec[t+1] <- q
+  e.pvec[t+1] <- p
+}
+
+e.pvec
+e.qvec
+
+pqtibble <-tibble(pvec=pvec,qvec=qvec,e.pvec=e.pvec,e.qvec=e.qvec,tp=c(0:20))
+
+
+# to show differences in convergence graphically
+pqtibble %>% 
+  ggplot()+
+  geom_line(aes(y=pvec,x=tp,color="pvec"))+
+  geom_line(aes(y=e.pvec,x=tp,color="e.pvec"))
+
+pqtibble %>% 
+  ggplot()+
+  geom_line(aes(y=qvec,x=tp,color="qvec"))+
+  geom_line(aes(y=e.qvec,x=tp,color="e.qvec"))
+
+## task d
+ert <- 1e-7 #error tolerance
+btm <- 0 # lowest value
+top <- 10 # highest value (we already "know" it will be around 5.4)
+N <- 1000 # max allowed iterations
+i <- 0
+
+f <- function(p) {
+  S(p)-D(p)
+}
+
+while ((top-btm)/2>ert & i<N){
+  mid <- (top+btm)/2
+  if (f(btm)*f(mid)<0) { #solution is somewhere between  btm and mid
+    top<- mid #lower top and try again
+  } else { # if not
+    btm <- mid # increase bottom and try again
+  }
+  i <- i+1
+}
+truevalue <- mid
+
+# test with i < 20 to see which is more efficient
+top <- 10
+btm <- 0
+i <- 0
+while ((top-btm)/2>ert & i<=20){
+  mid <- (top+btm)/2
+  if (f(btm)*f(mid)<0) { #solution is somewhere between  btm and mid
+    top<- mid #lower top and try again
+  } else { # if not
+    btm <- mid # increase bottom and try again
+  }
+  i <- i+1
+}
+mysol <- mid
+cobsol <- pvec[21]
+
+myerr <- abs(mysol-truevalue)
+coberr<-abs(cobsol-truevalue)
+
+myerr-coberr #since it is positive, cobweb model is slightly more efficient
+
+  
