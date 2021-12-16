@@ -111,3 +111,20 @@ hh.incomes <- incomes_couples %>%
   summarise(hhinc=sum(inc))
 
 Gini(hh.incomes$hhinc)
+
+bothincomes <- incomes_couples %>% 
+  select(hhid,inc,female) %>% 
+  pivot_wider(names_from=female,values_from=inc) %>% 
+  rename(male.inc="FALSE",female.inc="TRUE")
+
+cor(bothincomes$male.inc,bothincomes$female.inc)
+
+## Task 8
+
+randomcouples <- tibble(male.inc=bothincomes$male.inc,
+                        female.inc=sample(bothincomes$female.inc,replace=F),
+                        hhid=c(1:nrow(bothincomes))) %>% 
+  mutate(hhinc=male.inc+female.inc)
+
+Gini(randomcouples$hhinc)
+
