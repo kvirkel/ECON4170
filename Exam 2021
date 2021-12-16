@@ -41,7 +41,7 @@ cps <- cps %>%
   arrange(ai) #arranging dataset after ai for simplicity
 
 denom <- nrow(cps)*mean(cps$ai)
-num=0
+num <- 0
 
 for (i in c(1:nrow(cps))) {
   num <- cps$ai[i]+num
@@ -56,8 +56,8 @@ cps %>%
   labs(x="Income rank", y="L(i)")
 
 ## Task 5
-t=0.25
-avg.tax = mean(cps$ai)*t
+t <-0.25
+avg.tax <- mean(cps$ai)*t
 
 cps <- cps %>% 
   mutate(ai.taxed = ai*(1-t)) %>% 
@@ -68,7 +68,7 @@ cps <- cps %>%
   arrange(ai.transf)
 
 denom <- nrow(cps)*mean(cps$ai.transf)
-num=0
+num <- 0
 
 for (i in c(1:nrow(cps))) {
   num <- cps$ai.transf[i]+num
@@ -119,8 +119,8 @@ ladders <- read_csv("100757010-ladders_100774473_1639473454283.csv")
 
 ## Task 1
 
-s=0 #current square
-r=0 # number of rolls
+s<- 0 #current square
+r<- 0 # number of rolls
 # basic loop:
 while(s<90) {
   s <- s+sample(1:6,1)
