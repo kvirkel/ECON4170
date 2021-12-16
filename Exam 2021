@@ -7,6 +7,7 @@
 #### PACKAGES ####
 library(tidyverse)
 library(readxl)
+library(ineq)
 
 #### PROBLEM 1 ####
 ## Task 1
@@ -22,7 +23,7 @@ cps %>%
 
 cps <- cps %>% 
   mutate(ai=ahe*8*5*50) %>% 
-  mutate(airank=(rank(ai, ties.method = "random")-1)/(nrow(cps)-1)) #comment ties.method, -1 to start at 0
+  mutate(airank=(rank(ai, ties.method = "first")-1)/(nrow(cps)-1)) #comment ties.method (makes Lorenz prettier later), -1 to start at 0
 
 ## Task 3
 dec.length <- (1-0)/10
@@ -48,14 +49,65 @@ femfrac %>%
 ## Task 4
 
 cps <- cps %>% 
-  mutate(lor.p=1) # initializing column
-
+  mutate(lor.p=1) %>% # initializing column
+  arrange(ai) #arranging dataset after ai for simplicity
 
 denom <- nrow(cps)*mean(cps$ai)
+num=0
 
 for (i in c(1:nrow(cps))) {
-  L <- sum(cps$ai <= cps$ai[i])
-  cps$lor.p[i] <- L/denom
+  num <- cps$ai[i]+num
+  cps$lor.p[i] <- num/denom
 }
 
 
+cps %>% 
+  ggplot(aes(x=airank,y=lor.p))+
+  geom_line()+
+  geom_abline(intercept = 0, slope = 1)+
+  labs(x="Income rank", y="L(i)")
+
+## Task 5
+t=0.25
+avg.tax = mean(cps$ai)*t
+
+cps <- cps %>% 
+  mutate(ai.taxed = ai*(1-t)) %>% 
+  mutate(ai.transf=ai.taxed+avg.tax)
+
+# same as in 4)
+
+cps <- cps %>% 
+  mutate(lor.p.tax=1) %>% 
+  arrange(ai.transf)
+
+denom <- nrow(cps)*mean(cps$ai.transf)
+num=0
+
+for (i in c(1:nrow(cps))) {
+  num <- cps$ai.transf[i]+num
+  cps$lor.p.tax[i] <- num/denom
+}
+
+cps %>% 
+  ggplot(aes(x=airank)) +  #
+  geom_line(aes(y=lor.p, color="No tax"))+
+  geom_line(aes(y=lor.p.tax,color="With tax"))+
+  geom_abline(intercept = 0, slope = 1)+
+  labs(x="Income rank", y="L(i)")
+
+## Task 6
+incomes_couples <- read_csv("100757010-incomes_couples_100772843_1639472808107.csv")
+
+Gini(incomes_couples$inc)
+
+incomes_couples %>% 
+  group_by(female) %>% 
+  summarise(gini=Gini(inc))
+
+## Task 7
+hh.incomes <- incomes_couples %>% 
+  group_by(hhid) %>% 
+  summarise(hhinc=sum(inc))
+
+Gini(hh.incomes$hhinc)
