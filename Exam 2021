@@ -1,0 +1,61 @@
+## Exam 2021 ##
+
+#### README/IMPORTANT NOTES ####
+## I have previously set my working directory using setwd("directory location"),
+## but will not include this in the code to ensure anonymity.
+
+#### PACKAGES ####
+library(tidyverse)
+library(readxl)
+
+#### PROBLEM 1 ####
+## Task 1
+cps <- read_excel("100757010-cps_100771082_1639472229300.xlsx")
+
+cps %>% 
+  group_by(female) %>% 
+  summarise(mean=mean(ahe))
+
+# mean is 20.9 for men and 18.3 for women
+
+## Task 2
+
+cps <- cps %>% 
+  mutate(ai=ahe*8*5*50) %>% 
+  mutate(airank=(rank(ai, ties.method = "random")-1)/(nrow(cps)-1)) #comment ties.method, -1 to start at 0
+
+## Task 3
+dec.length <- (1-0)/10
+
+rank.tiers <- seq(0,1,by=dec.length)
+
+cps <- cps %>% 
+  mutate(decile = cut(airank, breaks = quantile(airank, probs = seq(0, 1, 0.1)), 
+             labels = 1:10, include.lowest = T))
+
+femfrac <- cps %>% 
+  group_by(decile) %>% 
+  summarise(f.frac=sum(female==1)/length(female))
+
+femfrac %>% 
+  ggplot()+
+  geom_bar(aes(x=decile,y=f.frac),stat="identity")+
+  labs(x="Income Decile", y="Fraction of women")
+
+
+# should not use femfrac %>% ggplot()+geom_line(aes(x=decile,y=f.frac,group=1))
+
+## Task 4
+
+cps <- cps %>% 
+  mutate(lor.p=1) # initializing column
+
+
+denom <- nrow(cps)*mean(cps$ai)
+
+for (i in c(1:nrow(cps))) {
+  L <- sum(cps$ai <= cps$ai[i])
+  cps$lor.p[i] <- L/denom
+}
+
+
