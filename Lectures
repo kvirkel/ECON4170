@@ -40,7 +40,7 @@ vec6[vec3]  # gives element 1, 2, 3, 4 and 5 in vec6
 
 
 ## Reading data ##
-setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R") # set working directory
+setwd("YOUR WORKING DIRECTORY") # set working directory
 
 election1 <- read_csv("election.csv")               # to tibble, best use
 election2 <- read.csv("election.csv")               # to data frame, a bit worse I think, but in base R
