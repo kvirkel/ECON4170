@@ -124,7 +124,7 @@ df %>%
 
 # set working directory
 
-setwd("C:/Users/lbskyum/OneDrive - Universitetet i Oslo/Documents/R/ECON4170 - Data Science")
+setwd("YOUR WORKING DIRECTORY")
 
 # get file
 
