@@ -1,5 +1,5 @@
 ## Aviation during COVID ##
-setwd("C:/Users/lbskyum/OneDrive - Universitetet i Oslo/Documents/R/ECON4170 - Data Science/Flightlists")
+setwd("YOUR WORKING DIRECTORY")
 
 #### install packages ####
 install.packages("tidyverse")
