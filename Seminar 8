@@ -1,6 +1,6 @@
 ## Seminar 8 - Week 46 ##
 
-setwd("C:/Users/lbskyum/OneDrive - Universitetet i Oslo/Documents/R/ECON4170 - Data Science")
+setwd("YOUR WORKING DIRECTORY")
 
 #### Packages ####
 library(ggplot2)
