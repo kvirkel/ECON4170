@@ -1,6 +1,6 @@
 ## Seminar 6 - Week 43   ##
 
-setwd("C:/Users/linns/OneDrive/Dokumenter/Skole/4170 - Data Science/4170 R")
+setwd("YOUR WORKING DIRECTORY")
 
 #### packages ####
 library(tidyverse)
