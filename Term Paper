@@ -44,7 +44,7 @@ library(rjstat)
 
 
 #### Set working directory ####
-setwd("C:/Users/linns/Downloads/2cfe9023-022d-46bb-a346-ee9b776188df/Innlevering")
+setwd("FOLDER LOCATION")
 
 #### Part 1: Map data ####
 ## creating map file ##
