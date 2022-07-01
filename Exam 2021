@@ -1,5 +1,7 @@
 ## Exam 2021 ##
 
+setwd("YOUR WORKING DIRECTORY")
+
 #### PACKAGES ####
 library(tidyverse)
 library(readxl)
